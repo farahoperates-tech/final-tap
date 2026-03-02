@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FINAL TAP</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="overrides.css" />
+</head>
+<body>
+
+  <!-- START OVERLAY -->
+  <div id="overlay" class="overlay" aria-hidden="false">
+    <div class="overlayCard">
+      <div class="overlayTitle">FINAL TAP</div>
+      <div class="overlayTag">Every tap delays the inevitable.</div>
+      <button id="overlayStart" class="overlayBtn">INITIATE CONTAINMENT</button>
+      <div class="overlayFine">
+        Tip: panic-clicking empty space accelerates doom.
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <header class="top">
+      <div class="title">FINAL TAP</div>
+      <div class="stats">
+        <div>Score: <span id="score">0</span></div>
+        <div>Time: <span id="time">10.0</span>s</div>
+        <div>Level: <span id="level">1</span></div>
+        <div>Best: <span id="best">0</span></div>
+        <div>Build: <span id="build">—</span></div>
+      </div>
+    </header>
+
+    <section class="card">
+      <div id="hint" class="hint">
+        PRESS BEGIN TO DELAY COLLAPSE.
+      </div>
+
+      <div class="chaos-bar">
+        <div id="chaosFill" class="chaos-fill"></div>
+      </div>
+
+      <div id="arena" class="arena" aria-label="Game area"></div>
+
+      <div class="buttons">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button id="restartBtn" disabled>Restart</button>
+        <button id="resetBtn" class="ghost">Reset Best</button>
+      </div>
+
+      <div class="fine">
+        Tip: On mobile, add this page to Home Screen for “app-like” feel.
+      </div>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
