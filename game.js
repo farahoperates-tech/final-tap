@@ -1330,7 +1330,7 @@ const SCAV_HOTSPOTS = {
       </div>
       <div class="ft-audit-list js-audit-list"></div>
     `;
-    (audit.root || arena).appendChild(hud);
+    arena.appendChild(hud);
     return hud;
   }
 
@@ -1621,6 +1621,7 @@ const bottomPad = hudRect ? (hudRect.height + 12) : 0;
 
     populateAuditClutter(clutter);
     audit.hud = createAuditHud();
+    audit.root.appendChild(audit.hud);
     renderAuditHudList();
     placeAuditItems(items);
 
