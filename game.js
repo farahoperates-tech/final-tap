@@ -1430,7 +1430,7 @@ const SCAV_HOTSPOTS = {
       const n = makeClutterProp(type);
       const p = zonePoint(choice(["floor", "bench", "crate", "breakerWall", "locker"]));
       n.style.left = `${p.x}px`;
-      n.style.top = `${p.y}px`;
+      n.style.top = `${safeY(p.y, 0)}px`;
       n.style.zIndex = "20";
       layer.appendChild(n);
       audit.clutterNodes.push(n);
@@ -1470,6 +1470,17 @@ const SCAV_HOTSPOTS = {
   function placeAuditItems(itemsLayer) {
     const placedBoxes = [];
 
+// --- MOBILE SAFE AREA: prevent audit items from spawning under the bottom HUD bar ---
+const hudRect = audit.hud ? audit.hud.getBoundingClientRect() : null;
+const bottomPad = hudRect ? (hudRect.height + 12) : 0;
+
+ function safeY(y, itemH) {
+  const rootRect = (audit.root || itemsLayer).getBoundingClientRect();
+  const hudTopInRoot = hudRect ? (hudRect.top - rootRect.top) : arenaH;
+  const maxY = Math.max(0, hudTopInRoot - 12 - itemH);
+  return Math.min(y, maxY);
+}
+
     // Target items
     for (const key of audit.targets) {
       const def = AUDIT_ITEM_DEFS[key];
@@ -1503,7 +1514,7 @@ const SCAV_HOTSPOTS = {
           if (overlapsAny(box, placedBoxes, 10)) continue;
 
           node.style.left = `${p.x}px`;
-          node.style.top = `${p.y}px`;
+          node.style.top = `${safeY(p.y, h)}px`;
           node.style.zIndex = "70";
 
           const onPick = (e) => {
@@ -1545,7 +1556,7 @@ const SCAV_HOTSPOTS = {
       if (!placed) {
         const p = zonePoint("floor");
         node.style.left = `${p.x}px`;
-        node.style.top = `${p.y}px`;
+        node.style.top = `${safeY(p.y, h)}px`;
         node.style.zIndex = "70";
         itemsLayer.appendChild(node);
         audit.itemNodes.push(node);
@@ -1585,7 +1596,7 @@ const SCAV_HOTSPOTS = {
         const box = { x: p.x, y: p.y, w, h };
         if (overlapsAny(box, placedBoxes, 8)) continue;
         n.style.left = `${p.x}px`;
-        n.style.top = `${p.y}px`;
+        n.style.top = `${safeY(p.y, h)}px`;
         n.style.zIndex = "62";
         itemsLayer.appendChild(n);
         placedBoxes.push(box);
