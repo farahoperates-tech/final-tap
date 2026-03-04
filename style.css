@@ -2990,3 +2990,17 @@ body.meltdown {
 .ft-audit-item.spr-rag      { background-image: url("audit-rag.png") !important; }
 .ft-audit-item.spr-key      { background-image: url("audit-key.png") !important; }
 ===== END DISABLED (moved to overrides.css) ===== */
+
+/* Mobile: prevent tap-to-scroll / UI jump inside the game */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+#arena {
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
