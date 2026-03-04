@@ -1330,7 +1330,7 @@ const SCAV_HOTSPOTS = {
       </div>
       <div class="ft-audit-list js-audit-list"></div>
     `;
-    arena.appendChild(hud);
+    (audit.root || arena).appendChild(hud);
     return hud;
   }
 
