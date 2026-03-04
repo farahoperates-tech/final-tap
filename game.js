@@ -1430,7 +1430,7 @@ const SCAV_HOTSPOTS = {
       const n = makeClutterProp(type);
       const p = zonePoint(choice(["floor", "bench", "crate", "breakerWall", "locker"]));
       n.style.left = `${p.x}px`;
-      n.style.top = `${safeY(p.y, 0)}px`;
+      n.style.top = `${p.y}px`;
       n.style.zIndex = "20";
       layer.appendChild(n);
       audit.clutterNodes.push(n);
