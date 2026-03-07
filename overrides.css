@@ -329,3 +329,12 @@
   border: 1px solid rgba(255,255,255,0.18) !important;
   color: #ddd !important;
 }
+/* Flicker mutation */
+.flicker-mode {
+  animation: reactorFlicker 0.35s infinite alternate;
+}
+
+@keyframes reactorFlicker {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(0.6); }
+}
