@@ -315,7 +315,14 @@ window.MUSIC = MUSIC;
   const STREAK_BONUS_RELIEF = 0.55;
 
   // Level progression
-  const MAX_LEVEL = 40;
+  const MAX_LEVEL = 100;
+  // Level mutation system
+const LEVEL_MUTATIONS = {
+  6: "flicker",
+  9: "drift",
+  12: "mirror",
+  15: "emergency_audit"
+};
   const LEVEL_TARGET_SCORE = [0, 6, 8, 10, 12, 14, 16, 18];
 
   // Tap object lifetimes (ms) by level
@@ -1749,12 +1756,19 @@ levelTimeLeft = isAuditLevel(level)
 
   function startCurrentLevelMode() {
     if (!running || paused || gameEnded || levelResolving) return;
+    const mutation = LEVEL_MUTATIONS[level] || null;
 
     if (isAuditLevel(level)) {
       startAuditMode();
     } else {
       mode = "tap";
       arena.classList.remove("audit-mode");
+      // Apply level mutation if present
+     if (mutation === "flicker") {
+     arena.classList.add("flicker-mode");
+      } else {
+      arena.classList.remove("flicker-mode");
+   }
       startTapSpawnLoop();
 
       const needed = scoreNeededToAdvance(level);
