@@ -322,7 +322,7 @@ window.MUSIC = MUSIC;
   9: "drift",
   12: "mirror",
   15: "emergency_audit",
-  18: "meltdown"
+  19: "meltdown"
 };
   const LEVEL_TARGET_SCORE = [0, 6, 8, 10, 12, 14, 16, 18];
 
