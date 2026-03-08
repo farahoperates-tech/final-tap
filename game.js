@@ -317,11 +317,12 @@ window.MUSIC = MUSIC;
   // Level progression
   const MAX_LEVEL = 100;
   // Level mutation system
-const LEVEL_MUTATIONS = {
+ const LEVEL_MUTATIONS = {
   6: "flicker",
   9: "drift",
   12: "mirror",
-  15: "emergency_audit"
+  15: "emergency_audit",
+  18: "meltdown"
 };
   const LEVEL_TARGET_SCORE = [0, 6, 8, 10, 12, 14, 16, 18];
 
@@ -926,7 +927,7 @@ function startRunNow() {
   if (pauseBtn) pauseBtn.textContent = "Pause";
   setButtonsForRunState(true);
 
-  beginLevel(12, false);
+  beginLevel(1, false);
   startTickLoop();
 }
   function showLevelCard(nextLevelNumber) {
@@ -1790,6 +1791,11 @@ if (mutation === "emergency_audit") {
   arena.classList.add("emergency-audit-mode");
 } else {
   arena.classList.remove("emergency-audit-mode");
+}
+
+if (mutation === "meltdown") {
+  chaos = CHAOS_MAX * 0.9;
+  updateChaosBar();
 }
       startTapSpawnLoop();
 
