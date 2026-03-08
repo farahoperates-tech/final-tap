@@ -926,7 +926,7 @@ function startRunNow() {
   if (pauseBtn) pauseBtn.textContent = "Pause";
   setButtonsForRunState(true);
 
-  beginLevel(1, false);
+  beginLevel(12, false);
   startTickLoop();
 }
   function showLevelCard(nextLevelNumber) {
@@ -1759,16 +1759,38 @@ levelTimeLeft = isAuditLevel(level)
     const mutation = LEVEL_MUTATIONS[level] || null;
 
     if (isAuditLevel(level)) {
-      startAuditMode();
-    } else {
+  startAuditMode();
+
+  // Emergency Audit: keep spawning tap targets during audit
+  if (mutation === "emergency_audit") {
+    startTapSpawnLoop();
+  }
+}
+      else {
       mode = "tap";
       arena.classList.remove("audit-mode");
       // Apply level mutation if present
-     if (mutation === "flicker") {
-     arena.classList.add("flicker-mode");
-      } else {
-      arena.classList.remove("flicker-mode");
-   }
+if (mutation === "flicker") {
+  arena.classList.add("flicker-mode");
+} else {
+  arena.classList.remove("flicker-mode");
+}
+
+if (mutation === "mirror") {
+  arena.classList.add("mirror-mode");
+} else {
+  arena.classList.remove("mirror-mode");
+}
+if (mutation === "drift") {
+  arena.classList.add("drift-mode");
+} else {
+  arena.classList.remove("drift-mode");
+}
+if (mutation === "emergency_audit") {
+  arena.classList.add("emergency-audit-mode");
+} else {
+  arena.classList.remove("emergency-audit-mode");
+}
       startTapSpawnLoop();
 
       const needed = scoreNeededToAdvance(level);
