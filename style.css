@@ -3012,3 +3012,14 @@ html, body {
   height: 100%;
   overflow: hidden;
 }
+html, body {
+  background: #0b0f14;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  touch-action: manipulation;
+}
