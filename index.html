@@ -4,8 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>FINAL TAP</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="overrides.css" />
 </head>
@@ -58,7 +61,14 @@
       </div>
     </section>
   </main>
-
+  <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js");
+    });
+  }
+</script>	
+ 
   <script src="game.js"></script>
 </body>
 </html>
