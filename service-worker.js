@@ -1,4 +1,4 @@
-const CACHE_NAME = "final-tap-cache-v3";
+const CACHE_NAME = "final-tap-cache-v4";
 
 const FILES_TO_CACHE = [
   "./",
@@ -11,10 +11,30 @@ const FILES_TO_CACHE = [
 
   "./intro-1.png",
   "./intro-2.png",
-
   "./intro-1.mp3",
   "./intro-2.mp3",
-  "./factory-ambience.mp3"
+  "./factory-ambience.mp3",
+
+  "./icon-vent.png",
+  "./icon-coolant.png",
+  "./icon-breaker.png",
+  "./icon-purge.png",
+  "./icon-hotwire.png",
+  "./icon-leak.png",
+  "./icon-override.png",
+  "./icon-worker.png",
+
+  "./audit-bg.png",
+  "./audit-wrench.png",
+  "./audit-mug.png",
+  "./audit-fuse.png",
+  "./audit-badge.png",
+  "./audit-bolts.png",
+  "./audit-tape.png",
+  "./audit-stamp.png",
+  "./audit-valvecap.png",
+  "./audit-key.png",
+  "./audit-rag.png"
 ];
 
 self.addEventListener("install", event => {
