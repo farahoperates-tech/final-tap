@@ -1,0 +1,682 @@
+/* =========================================================
+   FINAL TAP — overrides.css (CLEAN OVERRIDE LAYER)
+   Purpose: one single “wins-everything” layer so we can
+   stop stacking duplicate paste-blocks in style.css.
+   ========================================================= */
+
+/* ---------- Tap icons (PNG) ---------- */
+.target .tag, .trap .tag { display: none !important; }
+.target .ok, .trap .bad { display: none !important; }
+
+.target .icon, .target .hub,
+.target .pipe, .target .valve,
+.target .panel, .target .switch,
+.target .base, .target .lever,
+.trap .plate, .trap .wireA, .trap .wireB, .trap .spark,
+.trap .pipe, .trap .crack, .trap .drop,
+.trap .panel, .trap .screen, .trap .btn,
+.trap .badge, .trap .helmet, .trap .head, .trap .idline {
+  display: none !important;
+}
+
+/* Make tap objects show ONLY the PNG */
+.target, .trap {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 6px rgba(0,0,0,0.65));
+}
+
+/* Good tap icons */
+.target.gtap-vent    { background: url("icon-vent.png") center/contain no-repeat !important; }
+.target.gtap-coolant { background: url("icon-coolant.png") center/contain no-repeat !important; }
+.target.gtap-breaker { background: url("icon-breaker.png") center/contain no-repeat !important; }
+.target.gtap-purge   { background: url("icon-purge.png") center/contain no-repeat !important; }
+
+/* Trap icons */
+.trap.tt-hotwire     { background: url("icon-hotwire.png") center/contain no-repeat !important; }
+.trap.tt-leak        { background: url("icon-leak.png") center/contain no-repeat !important; }
+.trap.tt-override    { background: url("icon-override.png") center/contain no-repeat !important; }
+.trap.tt-worker      { background: url("icon-worker.png") center/contain no-repeat !important; }
+
+/* ---------- Audit background image ---------- */
+.arena.audit-mode .ft-audit-scene{
+  background: url("audit-bg.png") center / cover no-repeat !important;
+  image-rendering: pixelated;
+}
+
+/* Kill old CSS-drawn painted layers that can block the image */
+.arena.audit-mode .ft-audit-scene::before,
+.arena.audit-mode .ft-audit-scene::after{
+  content: none !important;
+}
+
+/* Optional: if clutter is still visually ugly, hide it for now. */
+.arena.audit-mode .ft-audit-clutter{
+  display: none !important;
+}
+
+/* ---------- Audit item PNG sprites ---------- */
+.ft-audit-item {
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  image-rendering: pixelated;
+}
+
+/* Hide any leftover inner “CSS sprite parts” */
+.ft-audit-item > * { display: none !important; }
+
+/* Sprite → file mapping */
+.ft-audit-item.spr-wrench    { background-image: url("audit-wrench.png") !important; }
+.ft-audit-item.spr-mug       { background-image: url("audit-mug.png") !important; }
+.ft-audit-item.spr-bolts     { background-image: url("audit-bolts.png") !important; }
+.ft-audit-item.spr-fuse      { background-image: url("audit-fuse.png") !important; }
+.ft-audit-item.spr-badge     { background-image: url("audit-badge.png") !important; }
+.ft-audit-item.spr-tape      { background-image: url("audit-tape.png") !important; }
+.ft-audit-item.spr-stamp     { background-image: url("audit-stamp.png") !important; }
+.ft-audit-item.spr-valvecap  { background-image: url("audit-valvecap.png") !important; }
+.ft-audit-item.spr-rag       { background-image: url("audit-rag.png") !important; }
+.ft-audit-item.spr-key       { background-image: url("audit-key.png") !important; }
+
+/* Temporary visibility boost (doesn't fix baked transparency, but helps readability) */
+.ft-audit-item {
+  filter:
+    drop-shadow(0 0 6px rgba(255, 60, 60, 0.18))
+    drop-shadow(0 0 1px rgba(0,0,0,0.85));
+}
+
+/* Temporary size boost (we’ll later do “real sizing” in game.js) */
+/* =========================================================
+   PHASE 2 — BRIEFING CARD (5 seconds max)
+   ========================================================= */
+
+.ft-briefing {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+}
+
+.ft-briefing-card {
+  width: min(560px, 92%);
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  background: rgba(10,10,10,0.92);
+  border: 1px solid rgba(255,0,0,0.35);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.75);
+}
+
+.ft-briefing-title {
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffb5b5;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.ft-briefing-sub {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.ft-briefing-rows {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.ft-briefing-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.ft-briefing-label {
+  font-weight: 900;
+  letter-spacing: 1px;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.ft-briefing-icons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ft-briefing-ico {
+  width: 44px;
+  height: 44px;
+  image-rendering: pixelated;
+  background: transparent center/contain no-repeat;
+  filter: drop-shadow(0 0 6px rgba(0,0,0,0.65));
+  border-radius: 10px;
+}
+
+.ft-briefing-goal {
+  margin-top: 12px;
+  font-size: 12px;
+  opacity: 0.85;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 10px;
+}
+/* =========================================================
+   INTRO SLIDES (Lore onboarding)
+   Uses: intro-1.png, intro-2.png
+   Includes: subtle horror-ish motion (Ken Burns + vignette + scanlines)
+   ========================================================= */
+
+.ft-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.82);
+}
+
+.ft-intro.hidden { display: none; }
+
+.ft-intro-card {
+  width: min(980px, 96vw);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255,0,0,0.35);
+  box-shadow: 0 20px 80px rgba(0,0,0,0.85);
+  background: rgba(0,0,0,0.85);
+}
+
+.ft-intro-img {
+  width: 100%;
+  height: min(520px, 62vh);
+  background: center center / contain no-repeat;
+  background-color: #0b0f14;
+  image-rendering: pixelated;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ken Burns: slow zoom + drift */
+.ft-intro-img::before {
+  display: none;
+}
+
+/* Dark vignette “breathing” */
+.ft-intro-img::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(900px 500px at 50% 35%, rgba(0,0,0,0.05), rgba(0,0,0,0.68) 78%, rgba(0,0,0,0.92) 100%);
+  pointer-events: none;
+  animation: ftVignetteBreath 3.8s ease-in-out infinite alternate;
+}
+
+/* Scanlines + grain shimmer layer */
+.ft-intro-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.20;
+  mix-blend-mode: overlay;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.09),
+      rgba(255,255,255,0.09) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgba(255,0,0,0.04),
+      rgba(255,0,0,0.04) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  animation: ftScanDrift 2.4s linear infinite;
+}
+
+/* Occasional micro-jitter (very subtle) */
+.ft-intro-jitter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: ftJitter 7s steps(1) infinite;
+}
+
+@keyframes ftKenBurns {
+  from { transform: scale(1.02) translate(0px, 0px); filter: contrast(1.03) saturate(0.98); }
+  to   { transform: scale(1.08) translate(-10px, 6px); filter: contrast(1.08) saturate(0.94); }
+}
+
+@keyframes ftVignetteBreath {
+  from { opacity: 0.92; }
+  to   { opacity: 1; }
+}
+
+@keyframes ftScanDrift {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(10px); }
+}
+
+@keyframes ftJitter {
+  0%, 86%, 100% { transform: translate(0,0); }
+  88% { transform: translate(-1px, 1px); }
+  90% { transform: translate(1px, -1px); }
+  92% { transform: translate(-1px, 0px); }
+  94% { transform: translate(0px, -1px); }
+}
+
+/* Bottom text area */
+.ft-intro-bottom {
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.ft-intro-subtitle {
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.72);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ft-intro-title {
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #ffb5b5;
+  font-size: 13px;
+}
+
+.ft-intro-text {
+  opacity: 0.85;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.ft-intro-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.ft-intro-actions button {
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+
+.ft-intro-skip {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  color: #ddd !important;
+}
+/* Flicker mutation */
+.flicker-mode {
+  animation: reactorFlicker 0.35s infinite alternate;
+}
+
+@keyframes reactorFlicker {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(0.6); }
+}
+/* Mirror mutation */
+.mirror-mode {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+/* Drift mutation */
+.drift-mode .target,
+.drift-mode .trap {
+  animation: driftFloat 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes driftFloat {
+  0% { transform: translate(0px, 0px); }
+  100% { transform: translate(8px, -6px); }
+}
+/* Emergency Audit mutation */
+.emergency-audit-mode {
+  box-shadow: 0 0 18px rgba(255, 70, 70, 0.35) inset;
+}
+/* =========================================================
+   CHAOS METER FEEDBACK PASS
+   ========================================================= */
+
+.chaos-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+#chaosFill,
+.chaos-fill {
+  transition:
+    width 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+/* normal */
+#chaosFill,
+.chaos-fill {
+  background: linear-gradient(90deg, #ff3b3b, #ff0000);
+  box-shadow: 0 0 18px rgba(255,0,0,0.55);
+}
+
+/* getting bad */
+#chaosFill.chaos-high,
+.chaos-fill.chaos-high {
+  background: linear-gradient(90deg, #ff7a1a, #ff2a00);
+  box-shadow:
+    0 0 18px rgba(255,90,0,0.65),
+    0 0 28px rgba(255,40,0,0.28);
+  filter: saturate(1.15) brightness(1.05);
+}
+
+/* oh shit */
+#chaosFill.chaos-critical,
+.chaos-fill.chaos-critical {
+  background: linear-gradient(90deg, #ffd24a, #ff3b00 35%, #ff0000 100%);
+  box-shadow:
+    0 0 20px rgba(255,120,0,0.85),
+    0 0 34px rgba(255,0,0,0.50);
+  transform-origin: center;
+  animation: chaosCriticalPulse 0.42s infinite alternate;
+}
+
+@keyframes chaosCriticalPulse {
+  from {
+    transform: scaleY(1);
+    box-shadow:
+      0 0 12px rgba(255,120,0,0.65),
+      0 0 22px rgba(255,0,0,0.28);
+  }
+  to {
+    transform: scaleY(1.35);
+    box-shadow:
+      0 0 24px rgba(255,170,0,0.95),
+      0 0 42px rgba(255,0,0,0.62);
+  }
+}
+
+/* =========================================================
+   ARENA PANIC (high chaos feedback)
+   ========================================================= */
+
+.arena-chaos-warning {
+  animation: arenaChaosWarning 0.35s infinite alternate;
+}
+
+@keyframes arenaChaosWarning {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.25) contrast(1.15);
+  }
+}
+
+.arena-chaos-critical {
+  animation: arenaChaosCritical 0.18s infinite alternate;
+}
+
+@keyframes arenaChaosCritical {
+  from {
+    transform: translate(0px,0px);
+    filter: brightness(1.1) contrast(1.2);
+  }
+  to {
+    transform: translate(-2px,1px);
+    filter: brightness(1.35) contrast(1.4);
+  }
+}
+
+/* =========================================================
+   TRAP PUNISHMENT FEEDBACK
+   ========================================================= */
+
+.ft-trap-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 122;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,70,70,0.30) 0%, rgba(255,0,0,0.18) 35%, rgba(255,0,0,0) 70%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: ftTrapFlash 180ms ease-out;
+}
+
+@keyframes ftTrapFlash {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.trap.trapHitPulse {
+  animation: trapHitPulse 140ms ease-out;
+}
+
+@keyframes trapHitPulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+  40% {
+    transform: scale(0.88);
+    filter: brightness(1.35) saturate(1.5);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+}
+/* =========================================================
+   TRAP SLAP FX
+   ========================================================= */
+
+.ft-trap-slap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 122;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.22) 0%, rgba(255,70,70,0.26) 22%, rgba(255,0,0,0.16) 42%, rgba(255,0,0,0) 72%);
+  mix-blend-mode: screen;
+  animation: ftTrapSlap 180ms ease-out;
+}
+
+@keyframes ftTrapSlap {
+  0% {
+    opacity: 1;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+.trap.trapHitPulse {
+  animation: trapHitPulse 140ms ease-out;
+}
+
+@keyframes trapHitPulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+  40% {
+    transform: scale(0.84);
+    filter: brightness(1.45) saturate(1.65);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+}
+/* =========================================================
+   HIGH CHAOS SCREEN GLITCH
+   ========================================================= */
+
+.arena.chaos-glitch::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 85;
+  opacity: 0.22;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.08) 0 2px,
+      transparent 2px 6px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255,0,0,0.12),
+      transparent 22%,
+      rgba(255,255,255,0.06) 50%,
+      transparent 78%,
+      rgba(255,0,0,0.12)
+    );
+  mix-blend-mode: screen;
+  animation: arenaChaosGlitch 120ms steps(2) infinite;
+}
+
+@keyframes arenaChaosGlitch {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0.14;
+  }
+  50% {
+    transform: translate(2px, -1px);
+    opacity: 0.28;
+  }
+  100% {
+    transform: translate(-2px, 1px);
+    opacity: 0.18;
+  }
+}
+/* --- Integration meter --- */
+.integration-label {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  opacity: 0.7;
+  margin-bottom: 3px;
+  color: rgba(200,180,0,0.8);
+}
+
+.integration-bar {
+  position: relative;
+  overflow: hidden;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(20,20,20,0.8);
+  margin-bottom: 8px;
+}
+
+.integration-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  background: rgba(40,40,40,0.9);
+  transition: width 0.3s ease, background 0.4s ease;
+}
+
+body.integration-warning {
+  background-color: rgba(40,36,0,0.04) !important;
+  box-shadow: inset 0 0 120px rgba(180,160,0,0.04);
+}
+
+/* --- Life pips --- */
+.ft-life-pip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: rgba(255,50,50,0.9);
+  border-radius: 2px;
+  margin-left: 4px;
+  box-shadow: 0 0 6px rgba(255,0,0,0.7);
+}
+
+/* --- Hint fixed height (prevents layout shift on wrap) --- */
+.hint {
+  min-height: calc(2em * 1.35);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+/* --- Disable zoom on mobile --- */
+html, body {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+* {
+  touch-action: manipulation;
+}
+
+/* =========================================================
+   INTERVENTION PANEL
+   ========================================================= */
+
+.ft-intervention-panel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: rgba(10,10,10,0.92);
+  border: 1px solid rgba(255,0,0,0.35);
+  border-radius: 12px;
+  z-index: 150;
+}
+
+.hidden {
+  display: none;
+}
+
+.ft-intervention-panel.hidden {
+  display: flex;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.ft-intervention-panel img {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.ft-intervention-btn {
+  background: linear-gradient(180deg, #2b0000, #120000);
+  border: 1px solid rgba(255,0,0,0.6);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
