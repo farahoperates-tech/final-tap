@@ -268,6 +268,145 @@ function playIntro(n) {
   return { unlock, start: play, play, playIntro1, playIntro2, stop, stopAll, pause, resume, setEnabled, setVolume };
 })();
 window.MUSIC = MUSIC;
+
+/* ==============================
+   Corridor SFX (Web Audio, no files)
+   ============================== */
+const CORRIDOR_SFX = (() => {
+  let ctx = null;
+  let master = null;
+
+  function ensure() {
+    if (ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = 0.55;
+    master.connect(ctx.destination);
+  }
+
+  function unlock() {
+    try { ensure(); if (ctx && ctx.state === "suspended") ctx.resume(); } catch (_) {}
+  }
+
+  function ready() {
+    ensure();
+    if (!ctx || !master) return false;
+    if (ctx.state === "suspended") ctx.resume();
+    return true;
+  }
+
+  // Low distant rumble/moan — worker approaching
+  function spawn() {
+    if (!ready()) return;
+    const t0 = ctx.currentTime;
+    const osc  = ctx.createOscillator();
+    const filt = ctx.createBiquadFilter();
+    const g    = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(65, t0);
+    osc.frequency.linearRampToValueAtTime(80, t0 + 0.3);
+    osc.frequency.linearRampToValueAtTime(52, t0 + 0.75);
+    filt.type = "lowpass";
+    filt.frequency.value = 260;
+    filt.Q.value = 2.2;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.35, t0 + 0.14);
+    g.gain.linearRampToValueAtTime(0, t0 + 0.85);
+    osc.connect(filt); filt.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0 + 0.9);
+  }
+
+  // Short soft pfft/whoosh — dart fired
+  function dartShoot() {
+    if (!ready()) return;
+    const t0  = ctx.currentTime;
+    const dur = 0.12;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d   = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
+    const src  = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp   = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(3400, t0);
+    bp.frequency.exponentialRampToValueAtTime(820, t0 + dur);
+    bp.Q.value = 1.1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.32, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(t0); src.stop(t0 + dur + 0.02);
+  }
+
+  // Bright two-note chime — worker cured
+  function workerCured() {
+    if (!ready()) return;
+    const t0 = ctx.currentTime;
+    [[880, 0], [1320, 0.09]].forEach(([freq, delay]) => {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0 + delay);
+      g.gain.exponentialRampToValueAtTime(0.48, t0 + delay + 0.007);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + 0.30);
+      osc.connect(g); g.connect(master);
+      osc.start(t0 + delay); osc.stop(t0 + delay + 0.34);
+    });
+  }
+
+  // Wet hiss spray + low droning wobble — worker attacks
+  function workerAttack() {
+    if (!ready()) return;
+    const t0 = ctx.currentTime;
+
+    // Hiss spray
+    const hDur = 0.30;
+    const hLen = Math.floor(ctx.sampleRate * hDur);
+    const hBuf = ctx.createBuffer(1, hLen, ctx.sampleRate);
+    const hd   = hBuf.getChannelData(0);
+    for (let i = 0; i < hLen; i++) hd[i] = (Math.random() * 2 - 1);
+    const hSrc = ctx.createBufferSource();
+    hSrc.buffer = hBuf;
+    const hFilt = ctx.createBiquadFilter();
+    hFilt.type = "bandpass";
+    hFilt.frequency.setValueAtTime(4800, t0);
+    hFilt.frequency.exponentialRampToValueAtTime(1100, t0 + hDur);
+    hFilt.Q.value = 0.7;
+    const hGain = ctx.createGain();
+    hGain.gain.setValueAtTime(0.52, t0);
+    hGain.gain.exponentialRampToValueAtTime(0.0001, t0 + hDur);
+    hSrc.connect(hFilt); hFilt.connect(hGain); hGain.connect(master);
+    hSrc.start(t0); hSrc.stop(t0 + hDur + 0.02);
+
+    // Low drone with wobble
+    const dOsc  = ctx.createOscillator();
+    const lfo   = ctx.createOscillator();
+    const lfoG  = ctx.createGain();
+    const dFilt = ctx.createBiquadFilter();
+    const dGain = ctx.createGain();
+    dOsc.type = "sawtooth";
+    dOsc.frequency.value = 76;
+    lfo.type = "sine";
+    lfo.frequency.value = 5.2;
+    lfoG.gain.value = 7;
+    lfo.connect(lfoG); lfoG.connect(dOsc.frequency);
+    dFilt.type = "lowpass";
+    dFilt.frequency.value = 340;
+    dGain.gain.setValueAtTime(0, t0 + 0.06);
+    dGain.gain.linearRampToValueAtTime(0.28, t0 + 0.20);
+    dGain.gain.linearRampToValueAtTime(0, t0 + 0.72);
+    dOsc.connect(dFilt); dFilt.connect(dGain); dGain.connect(master);
+    dOsc.start(t0 + 0.06); dOsc.stop(t0 + 0.75);
+    lfo.start(t0 + 0.06); lfo.stop(t0 + 0.75);
+  }
+
+  return { unlock, spawn, dartShoot, workerCured, workerAttack };
+})();
+
   /* ==============================
      DOM refs
      ============================== */
@@ -436,6 +575,30 @@ function trapLifetimeForLevel(lvl) {
   let missStreak = 0;
   let emptyTapMissStreak = 0;
 
+  // Sector 20 / corridor state
+  let corridorActive = false;
+  let corridorPaused = false;
+  let corridorLives = 3;
+  let corridorDarts = 5;
+  let corridorHealth = 100;
+  let corridorTimeLeft = 45;
+  let corridorCureCount = 0;
+  let corridorWorkers = [];
+  let corridorSpawnTimer = null;
+  let corridorTickTimer = null;
+  let corridorMoveTimer = null;
+  let corridorRogueDarts = [];
+  let corridorRogueDartTimer = null;
+  let corridorRogueDartIdSeq = 0;
+  let corridorNextLevel = 20;
+  let corridorEl = null;
+  let corridorWorkerIdSeq = 0;
+  let corridorTouchHandler = null;
+  let sector20Unlocked = false;
+  let sector20Cleared = false;
+  let descentUnlocked = false;
+  let descentCleared = false;
+
   /* ==============================
      Utility
      ============================== */
@@ -445,7 +608,8 @@ function trapLifetimeForLevel(lvl) {
  
 
   function livesDisplay() {
-  if (level < 10 || lives <= 0) return "";
+  if (level < 10) return "";
+  if (lives <= 0) return " | Lives: ";
   return " | Lives: " + Array.from({ length: lives }, () => '<span class="ft-life-pip"></span>').join("");
 }
 
@@ -721,6 +885,33 @@ setHint(`⚠️ ${severityText}`);
     { file: "intervention-signal-calibration.png", label: "SIGNAL CALIBRATION",   type: "evil", effect: "reverseControls" },
     { file: "intervention-containment-drill.png",  label: "CONTAINMENT DRILL",    type: "evil", effect: "fakeCalmThenSpike" }
   ];
+
+  function showLoreFloat(msg) {
+    const el = document.createElement("div");
+    el.className = "ft-lore-float";
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+  }
+
+  const LIFE_LOST_MESSAGES = [
+    "LIFE LOST.\nThe facility is disappointed.",
+    "OPERATOR DOWN.\nReconstitution in progress.",
+    "BRAIN TISSUE DEGRADED.\nContinuity protocol engaged.",
+    "NEURAL LAPSE DETECTED.\nThe factory notes your failure.",
+    "CONTAINMENT LAPSE.\nYour record has been updated.",
+  ];
+
+  function showLifeLostFlash(onDone) {
+    const msg = LIFE_LOST_MESSAGES[Math.floor(Math.random() * LIFE_LOST_MESSAGES.length)];
+    const el = document.createElement("div");
+    el.className = "ft-life-lost-flash";
+    el.innerHTML = msg.replace("\n", "<br>");
+    document.body.appendChild(el);
+    // Fade out after 1.6s, remove and continue after 2s
+    setTimeout(() => el.classList.add("ft-life-lost-flash--out"), 1600);
+    setTimeout(() => { el.remove(); onDone(); }, 2000);
+  }
 
   function showIntervention() {
     const entry = choice(INTERVENTIONS);
@@ -1310,6 +1501,12 @@ function startRunNow() {
         setHint("Containment stabilized. Barely.");
       }
 
+      // Immediately advance if the score threshold is reached — no need to wait for timer
+      if (mode === "tap" && !levelResolving && levelScore >= scoreNeededToAdvance(level)) {
+        beginLevelResolution("score");
+        return;
+      }
+
       flashObject(node, "hitPulse");
       doSparkPuff(cx, cy);
       node.classList.add("tapAnim");
@@ -1845,20 +2042,57 @@ const bottomPad = hudRect ? (hudRect.height + 12) : 0;
 
   function finishAuditTimeout() {
     if (!audit.active || levelResolving) return;
-
     levelResolving = true;
-    levelEndSnapshot = {
-      level,
-      levelScore,
-      score,
-      mode: "audit-timeout"
-    };
-
-    addChaos(1.5, "auditTimeout");
-    setHint("Audit failed. Everything looked incriminating.");
-
     teardownAuditMode();
-    resolveLevelEndWithSnapshot();
+    setHint("Audit failed. Everything looked incriminating.");
+    addChaos(1.5, "auditTimeout");
+
+    const earlyHunts = [4, 7, 12, 18];
+    const lateHunts = [25, 33, 40];
+
+    if (earlyHunts.includes(level)) {
+      const wrap = document.createElement("div");
+      wrap.className = "ft-sector-choice";
+      wrap.innerHTML = `
+        <div class="ft-sector-choice-card">
+          <div class="ft-sector-choice-alert">AUDIT INCOMPLETE</div>
+          <div class="ft-sector-choice-title">MANAGEMENT IS DISAPPOINTED.</div>
+          <div class="ft-sector-choice-sub">You have one more chance to locate the evidence.</div>
+          <div class="ft-sector-choice-buttons">
+            <button class="ft-checkpoint-btn-sector" type="button">RETRY AUDIT</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(wrap);
+      wrap.querySelector('.ft-checkpoint-btn-sector').onclick = () => {
+        wrap.remove();
+        levelResolving = false;
+        beginLevel(level, false);
+        startTickLoop();
+      };
+    } else if (lateHunts.includes(level)) {
+      const wrap = document.createElement("div");
+      wrap.className = "ft-sector-choice";
+      wrap.innerHTML = `
+        <div class="ft-sector-choice-card">
+          <div class="ft-sector-choice-alert">JUDGMENT INITIATED</div>
+          <div class="ft-sector-choice-title">YOU HAVE BEEN FOUND LACKING.</div>
+          <div class="ft-sector-choice-sub">The Factory has deemed your soul unworthy of passage. You will be sent to the Purgatory of the Factory — THE PIT. Prove yourself pure. Endure the suffering. Only then shall the Factory grant you mercy and a second chance at your audit. Fail the Pit and you return to the very beginning. The Factory does not forgive twice.</div>
+          <div class="ft-sector-choice-buttons">
+            <button class="ft-checkpoint-btn-sector" type="button">ACCEPT JUDGMENT</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(wrap);
+      wrap.querySelector('.ft-checkpoint-btn-sector').onclick = () => {
+        wrap.remove();
+        startThePit(level);
+      };
+    } else {
+      levelResolving = false;
+      beginLevel(level, false);
+      startTickLoop();
+    }
   }
 
   /* ==============================
@@ -1967,7 +2201,7 @@ if (mutation === "meltdown") {
   function beginLevel(levelNumber, showCard = false) {
     level = clamp(levelNumber, 1, MAX_LEVEL);
 
-if (level === 10 && lives <= 0) {
+if (level >= 10 && lives <= 0) {
   lives = 3;
 }
 
@@ -2016,6 +2250,31 @@ updateHUD();
 
     if (snap.levelScore >= needed) {
       const next = snap.level + 1;
+
+      // Integration checkpoint — appears exactly once after level 19
+      if (snap.level === 19) {
+        showIntegrationCheckpoint(next);
+        return;
+      }
+
+      // The Descent — appears once after level 39
+      if (snap.level === 39) {
+        showDescentChoice(next);
+        return;
+      }
+
+      // GEHENNA — triggers on Kabbalah levels where digits sum to 7
+      if ([16,34,43,52,61,70,79,88,97].includes(snap.level)) {
+        showGehennaChoice(next);
+        return;
+      }
+
+      // Sector 20 random re-appearance after level 20 once unlocked
+      if (sector20Unlocked && snap.level > 20 && Math.random() < 0.25) {
+        showSector20Choice(next);
+        return;
+      }
+
       beginLevel(next, true);
     } else {
       endGame(false);
@@ -2108,6 +2367,12 @@ updateHUD();
     removeDynamicNodes();
     teardownAuditMode();
 
+    // Clean up any lingering overlay screens from the previous run
+    document.querySelectorAll(
+      ".ft-absorption-screen, .ft-corridor, .ft-integration-checkpoint, " +
+      ".ft-integration-transition, .ft-sector-choice, .ft-sector-briefing"
+    ).forEach(n => n.remove());
+
     running = false;
     paused = false;
     intermission = false;
@@ -2116,6 +2381,7 @@ updateHUD();
 
     score = 0;
     level = 1;
+    lives = 0;
     levelScore = 0;
     levelTimeLeft = BASE_LEVEL_TIME;
     chaos = 0;
@@ -2127,6 +2393,25 @@ updateHUD();
     levelEpoch = 0;
     levelResolving = false;
     levelEndSnapshot = null;
+
+    // Reset integration and intervention state so absorption can't retrigger
+    integration = 0;
+    updateIntegrationBar();
+    document.body.classList.remove("integration-warning");
+    interventionActive = false;
+    currentIntervention = null;
+    evilClickCount = 0;
+    firstEvilClick = true;
+    if (interventionTimeout) { clearTimeout(interventionTimeout); interventionTimeout = null; }
+
+    // Reset sector flags
+    sector20Cleared = false;
+    sector20Unlocked = false;
+
+    // Reset corridor state
+    corridorActive = false;
+    corridorPaused = false;
+    corridorWorkers = [];
 
     if (pauseBtn) pauseBtn.textContent = "Pause";
     hidePauseBanner();
@@ -2168,9 +2453,14 @@ function endGame(victory = false) {
       setButtonsForRunState(true);
       if (pauseBtn) pauseBtn.textContent = "Pause";
 
-      setHint("Operator continuity restored. Brain tissue degraded.");
-     beginLevel(level, false);
-     startTickLoop();
+      const resumeLevel = level;
+      showLifeLostFlash(() => {
+        if (!gameEnded) {
+          setHint("Operator continuity restored. Brain tissue degraded.");
+          beginLevel(resumeLevel, false);
+          startTickLoop();
+        }
+      });
       return;
     }
   }
@@ -2202,10 +2492,6 @@ function endGame(victory = false) {
   );
 
   setHint(victory ? "You made it. HR wants a word." : "Everything is under control (statement pending).");
-
-  if (!victory && level >= 10 && lives === 0) {
-    setTimeout(showAbsorptionScreen, 2000);
-  }
 }
 
   function showAbsorptionScreen() {
@@ -2289,6 +2575,510 @@ function endGame(victory = false) {
     document.body.appendChild(wrap);
   }
   /* ==============================
+     Sector 20 — Corridor Level
+     ============================== */
+
+  function showIntegrationCheckpoint(nextLevel) {
+    document.querySelectorAll(".ft-integration-checkpoint").forEach(n => n.remove());
+
+    const wrap = document.createElement("div");
+    wrap.className = "ft-integration-checkpoint";
+    wrap.innerHTML = `
+      <div class="ft-integration-checkpoint-card">
+        <div class="ft-integration-checkpoint-label">INTEGRATION CHECKPOINT</div>
+        <div class="ft-integration-checkpoint-body">You have survived longer than anticipated. The facility is impressed. The facility does not care. Your absorption is inevitable regardless of what you choose next.</div>
+        <div class="ft-integration-checkpoint-buttons">
+          <button class="ft-checkpoint-btn-continue" type="button">CONTINUE CONTAINMENT</button>
+          <button class="ft-checkpoint-btn-sector" type="button">ENTER SECTOR 20</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    function onChoice(proceedFn) {
+      wrap.remove();
+      const msg = document.createElement("div");
+      msg.className = "ft-integration-transition";
+      msg.innerHTML = `<div class="ft-integration-transition-text">Noted. Your choice has been logged. It does not matter. The factory thanks you for your continued cooperation.</div>`;
+      document.body.appendChild(msg);
+      setTimeout(() => {
+        msg.remove();
+        proceedFn();
+      }, 3000);
+    }
+
+    wrap.querySelector(".ft-checkpoint-btn-continue").addEventListener("click", () => {
+      onChoice(() => {
+        beginLevel(nextLevel, true);
+        startTickLoop();
+      });
+    });
+
+    wrap.querySelector(".ft-checkpoint-btn-sector").addEventListener("click", () => {
+      onChoice(() => {
+        startCorridorLevel(nextLevel);
+      });
+    });
+  }
+
+  function showSector20Choice(nextLevel) {
+    sector20Unlocked = true;
+    document.querySelectorAll(".ft-sector-choice").forEach(n => n.remove());
+
+    const wrap = document.createElement("div");
+    wrap.className = "ft-sector-choice";
+    wrap.innerHTML = `
+      <div class="ft-sector-choice-card">
+        <div class="ft-sector-choice-alert">SECTOR ALERT</div>
+        <div class="ft-sector-choice-title">SECTOR 20 BREACH DETECTED.</div>
+        <div class="ft-sector-choice-sub">Corrupted workers reported.</div>
+        <div class="ft-sector-choice-buttons">
+          <button class="ft-sector-btn-enter" type="button">ENTER SECTOR 20</button>
+          <button class="ft-sector-btn-continue" type="button">CONTINUE CONTAINMENT</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    wrap.querySelector(".ft-sector-btn-enter").addEventListener("click", () => {
+      wrap.remove();
+      showSector20Briefing(nextLevel);
+    });
+
+    wrap.querySelector(".ft-sector-btn-continue").addEventListener("click", () => {
+      wrap.remove();
+      beginLevel(nextLevel, true);
+      startTickLoop();
+    });
+  }
+
+  function showSector20Briefing(nextLevel) {
+    document.querySelectorAll(".ft-sector-briefing").forEach(n => n.remove());
+
+    const wrap = document.createElement("div");
+    wrap.className = "ft-sector-briefing";
+    wrap.innerHTML = `
+      <div class="ft-sector-briefing-card">
+        <div class="ft-sector-briefing-title">SECTOR 20 — DEPLOYMENT BRIEF</div>
+        <div class="ft-sector-briefing-text">You are entering a contaminated zone. Corrupted workers — former employees absorbed by the hivemind — are advancing. You have 5 antidote darts. Tap workers to cure them. Cure 3 workers to earn 1 new dart. Do not let them reach you.</div>
+        <button class="ft-sector-briefing-deploy" type="button">DEPLOY</button>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    wrap.querySelector(".ft-sector-briefing-deploy").addEventListener("click", () => {
+      wrap.remove();
+      startCorridorLevel(nextLevel);
+    });
+  }
+
+  function showGooSplatter() {
+    const el = document.createElement("div");
+    el.className = "ft-corridor-splatter";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1600);
+  }
+
+  function showGreenTendrils() {
+    const el = document.createElement("div");
+    el.className = "ft-corridor-tendrils";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+  }
+
+  function startCorridorLevel(nextLevel) {
+    corridorNextLevel = nextLevel;
+    corridorActive = true;
+    corridorLives = 3;
+    corridorDarts = 8;
+    corridorHealth = 100;
+    corridorTimeLeft = 45;
+    corridorCureCount = 0;
+    corridorWorkers = [];
+    corridorWorkerIdSeq = 0;
+    corridorRogueDarts = [];
+    corridorRogueDartIdSeq = 0;
+
+    CORRIDOR_SFX.unlock();
+    clearGameTimers();
+    buildCorridorDOM();
+
+    // Single document-level touchstart — the only tap detection for the corridor.
+    // Removed when the corridor ends. Never attaches listeners to worker elements.
+    corridorTouchHandler = (e) => {
+      if (!corridorActive || corridorPaused) return;
+      const t = e.changedTouches[0] || e.touches[0];
+      if (!t) return;
+      const tx = t.clientX;
+      const ty = t.clientY;
+
+      // Check rogue darts before workers
+      for (const dart of corridorRogueDarts) {
+        if (dart.removed || !dart.el.isConnected) continue;
+        const r = dart.el.getBoundingClientRect();
+        const PAD = 16;
+        if (tx >= r.left - PAD && tx <= r.right + PAD && ty >= r.top - PAD && ty <= r.bottom + PAD) {
+          collectRogueDart(dart);
+          return;
+        }
+      }
+
+      // Loop all workers, check each bounding rect, collect hits
+      const hits = [];
+      for (const w of corridorWorkers) {
+        if (w.removed || !w.el.isConnected) continue;
+        const r = w.el.getBoundingClientRect();
+        if (tx >= r.left && tx <= r.right && ty >= r.top && ty <= r.bottom) {
+          hits.push({ worker: w, area: r.width * r.height });
+        }
+      }
+      if (hits.length === 0) {
+        const arenaEl = corridorEl && corridorEl.querySelector(".js-corridor-arena");
+        if (arenaEl) {
+          const ar = arenaEl.getBoundingClientRect();
+          if (tx >= ar.left && tx <= ar.right && ty >= ar.top && ty <= ar.bottom) {
+            drainCorridorHealth(5);
+          }
+        }
+        return;
+      }
+
+      // Pick the largest (= deepest = frontmost)
+      hits.sort((a, b) => b.area - a.area);
+      cureCorridorWorker(hits[0].worker);
+    };
+    document.addEventListener("touchstart", corridorTouchHandler, { passive: true });
+
+    startCorridorLoops();
+  }
+
+  function buildCorridorDOM() {
+    document.querySelectorAll(".ft-corridor").forEach(n => n.remove());
+
+    const wrap = document.createElement("div");
+    wrap.className = "ft-corridor";
+    wrap.innerHTML = `
+      <div class="ft-corridor-bg"></div>
+      <div class="ft-corridor-hud">
+        <div class="ft-corridor-hud-row">
+          <div class="ft-corridor-timer js-corridor-timer">45s</div>
+          <div class="ft-corridor-hud-right">
+            <div class="ft-corridor-lives-row js-corridor-lives"></div>
+          </div>
+        </div>
+        <div class="ft-corridor-health-bar">
+          <div class="ft-corridor-health-fill js-corridor-health"></div>
+        </div>
+      </div>
+      <div class="ft-corridor-arena js-corridor-arena"></div>
+      <button class="js-corridor-pause ft-corridor-pause-btn" type="button">PAUSE</button>
+    `;
+    document.body.appendChild(wrap);
+    corridorEl = wrap;
+    updateCorridorHUD();
+
+    wrap.querySelector(".js-corridor-pause").addEventListener("click", (e) => {
+      e.stopPropagation();
+      corridorPaused = !corridorPaused;
+      wrap.querySelector(".js-corridor-pause").textContent = corridorPaused ? "RESUME" : "PAUSE";
+    });
+  }
+
+  function updateCorridorHUD() {
+    if (!corridorEl) return;
+    const timerEl  = corridorEl.querySelector(".js-corridor-timer");
+    const livesEl  = corridorEl.querySelector(".js-corridor-lives");
+    const healthEl = corridorEl.querySelector(".js-corridor-health");
+
+    if (timerEl)  timerEl.textContent  = `${Math.ceil(corridorTimeLeft)}s`;
+    if (livesEl)  livesEl.innerHTML    = Array.from({ length: corridorLives }, () => '<span class="ft-life-pip"></span>').join("");
+    if (healthEl) healthEl.style.width = `${clamp(corridorHealth, 0, 100)}%`;
+  }
+
+  function spawnCorridorWorker() {
+    if (!corridorActive || !corridorEl) return;
+    if (corridorWorkers.length >= 10) return;
+    const arena = corridorEl.querySelector(".js-corridor-arena");
+    if (!arena) return;
+
+    const id = ++corridorWorkerIdSeq;
+    const el = document.createElement("div");
+    el.className = "ft-corridor-worker";
+    el.dataset.workerId = String(id);
+    el.style.pointerEvents = "auto";
+    el.style.zIndex = "50";
+
+    // Start invisible; position set by move loop
+    el.style.opacity = "0";
+    el.style.width = "18px";
+    el.style.height = "22px";
+
+    const hasCanister = Math.random() < 0.50;
+    if (hasCanister) {
+      const pip = document.createElement("div");
+      pip.className = "ft-corridor-canister-pip";
+      el.appendChild(pip);
+    }
+
+    arena.appendChild(el);
+
+    corridorWorkers.push({
+      id,
+      el,
+      removed: false,
+      hasCanister,
+      depth: 0.02,
+      speed: hasCanister ? rand(0.014, 0.026) : rand(0.007, 0.013),
+      lateralDrift: rand(-0.28, 0.28),
+      wobblePhase: rand(0, Math.PI * 2),
+      wobbleAmp: rand(0.02, 0.05)
+    });
+
+    CORRIDOR_SFX.spawn();
+  }
+
+  function showDartFlash(cx, cy) {
+    if (!corridorEl) return;
+    const arena = corridorEl.querySelector(".js-corridor-arena");
+    if (!arena) return;
+    const flash = document.createElement("div");
+    flash.className = "ft-corridor-dart-flash";
+    flash.style.left = `${cx}px`;
+    flash.style.top  = `${cy}px`;
+    arena.appendChild(flash);
+    setTimeout(() => flash.remove(), 200);
+  }
+
+  function spawnRogueDart() {
+    if (!corridorActive || !corridorEl) return;
+    const arena = corridorEl.querySelector(".js-corridor-arena");
+    if (!arena) return;
+
+    const id  = ++corridorRogueDartIdSeq;
+    const ltr = Math.random() < 0.5;
+    const dur = (rand(6, 9) | 0) + "s";
+    const topPct = (rand(18, 72) | 0) + "%";
+
+    const div = document.createElement("div");
+    div.className = "ft-corridor-rogue-dart " + (ltr ? "ft-rogue-dart-ltr" : "ft-rogue-dart-rtl");
+    div.style.setProperty("--dart-dur", dur);
+    div.style.top = topPct;
+    arena.appendChild(div);
+
+    const dartObj = { id, el: div, removed: false };
+    corridorRogueDarts.push(dartObj);
+
+    div.addEventListener("animationend", (e) => {
+      if (e.animationName === "ftRogueFloatLTR" || e.animationName === "ftRogueFloatRTL") {
+        dartObj.removed = true;
+        div.remove();
+        corridorRogueDarts = corridorRogueDarts.filter(d => d.id !== id);
+      }
+    });
+  }
+
+  function collectRogueDart(dart) {
+    dart.removed = true;
+    if (dart.el.isConnected) {
+      dart.el.classList.add("ft-rogue-dart-collected");
+      setTimeout(() => { if (dart.el.isConnected) dart.el.remove(); }, 300);
+    }
+    corridorRogueDarts = corridorRogueDarts.filter(d => d.id !== dart.id);
+    corridorDarts += 1;
+    updateCorridorHUD();
+    setHint("Rogue dart recovered. +1 dart.");
+  }
+
+  function scheduleRogueDart() {
+    if (!corridorActive) return;
+    const delay = (rand(8000, 10000) | 0);
+    corridorRogueDartTimer = setTimeout(() => {
+      if (corridorActive && !corridorPaused) {
+        if (corridorRogueDarts.filter(d => !d.removed).length < 2) {
+          spawnRogueDart();
+        }
+      }
+      scheduleRogueDart();
+    }, delay);
+  }
+
+  function cureCorridorWorker(worker) {
+    if (!corridorActive) return;
+
+    worker.removed = true;
+
+    // Dart flash before removing from DOM so getBoundingClientRect still works
+    if (worker.el.isConnected && corridorEl) {
+      const arena = corridorEl.querySelector(".js-corridor-arena");
+      if (arena) {
+        const wRect = worker.el.getBoundingClientRect();
+        const aRect = arena.getBoundingClientRect();
+        showDartFlash(
+          wRect.left - aRect.left + wRect.width  / 2,
+          wRect.top  - aRect.top  + wRect.height / 2
+        );
+      }
+      worker.el.remove();
+    }
+
+    const idx = corridorWorkers.indexOf(worker);
+    if (idx !== -1) corridorWorkers.splice(idx, 1);
+
+    CORRIDOR_SFX.dartShoot();
+    corridorCureCount += 1;
+    setTimeout(() => CORRIDOR_SFX.workerCured(), 95);
+
+    setHint(worker.hasCanister ? "Canister neutralised." : "Worker cured.");
+    updateCorridorHUD();
+  }
+
+  function moveCorridorWorkers() {
+    if (!corridorActive || !corridorEl) return;
+    const arena = corridorEl.querySelector(".js-corridor-arena");
+    if (!arena) return;
+
+    const rect  = arena.getBoundingClientRect();
+    const aW    = rect.width  || window.innerWidth;
+    const aH    = rect.height || (window.innerHeight - 82);
+
+    // Corridor vanishing point and player-edge target
+    const vanishX = aW * 0.50;
+    const vanishY = aH * 0.20;
+    const edgeY   = aH * 0.90;
+
+    const minW = 16, maxW = 82;
+    const minH = 20, maxH = 98;
+
+    const reached = [];
+
+    corridorWorkers.forEach(w => {
+      if (w.removed) return;
+      w.depth += w.speed;
+      w.wobblePhase += 0.13;
+
+      if (w.depth >= 0.97) {
+        w.removed = true;
+        reached.push(w.id);
+        if (w.el.isConnected) w.el.remove();
+        return;
+      }
+
+      const targetX = vanishX + w.lateralDrift * aW;
+      const cx = vanishX + (targetX - vanishX) * w.depth;
+      const cy = vanishY + (edgeY - vanishY) * w.depth;
+      const wobble = Math.sin(w.wobblePhase) * w.wobbleAmp * aW * w.depth;
+
+      const ww = minW + (maxW - minW) * w.depth;
+      const wh = minH + (maxH - minH) * w.depth;
+
+      if (w.el.isConnected) {
+        w.el.style.left    = `${cx + wobble - ww / 2}px`;
+        w.el.style.top     = `${cy - wh}px`;
+        w.el.style.width   = `${ww}px`;
+        w.el.style.height  = `${wh}px`;
+        w.el.style.opacity = String(clamp(w.depth * 10, 0, 1));
+        w.el.style.zIndex  = String(Math.floor(w.depth * 90) + 10);
+      }
+    });
+
+    if (reached.length > 0) {
+      corridorWorkers = corridorWorkers.filter(w => !reached.includes(w.id));
+      reached.forEach(() => drainCorridorHealth(20));
+    }
+  }
+
+  function drainCorridorHealth(amount) {
+    CORRIDOR_SFX.workerAttack();
+    showGooSplatter();
+    showGreenTendrils();
+    corridorHealth = Math.max(0, corridorHealth - amount);
+    updateCorridorHUD();
+    if (corridorHealth <= 0) loseCorridorLife();
+  }
+
+  function loseCorridorLife() {
+    corridorLives -= 1;
+    corridorHealth = 100;
+    updateCorridorHUD();
+    addBodyFlash();
+
+    if (corridorLives <= 0) {
+      setHint("Sector 20 overwhelmed.");
+      setTimeout(() => endCorridorLevel(false), 800);
+    } else {
+      setHint("Breached. Falling back.");
+    }
+  }
+
+  function endCorridorLevel(won = true) {
+    corridorActive = false;
+    corridorPaused = false;
+    if (corridorSpawnTimer)    { clearInterval(corridorSpawnTimer);    corridorSpawnTimer    = null; }
+    if (corridorTickTimer)     { clearInterval(corridorTickTimer);     corridorTickTimer     = null; }
+    if (corridorMoveTimer)     { clearInterval(corridorMoveTimer);     corridorMoveTimer     = null; }
+    if (corridorRogueDartTimer){ clearTimeout(corridorRogueDartTimer); corridorRogueDartTimer = null; }
+    corridorRogueDarts.forEach(d => { if (d.el && d.el.isConnected) d.el.remove(); });
+    corridorRogueDarts = [];
+    if (corridorTouchHandler) {
+      document.removeEventListener("touchstart", corridorTouchHandler);
+      corridorTouchHandler = null;
+    }
+    corridorWorkers = [];
+    if (corridorEl) { corridorEl.remove(); corridorEl = null; }
+
+    // Reset level state so tap levels behave normally after the corridor
+    levelResolving   = false;
+    levelEndSnapshot = null;
+    levelScore       = 0;
+
+    if (won) {
+      sector20Cleared = true;
+      beginLevel(corridorNextLevel, true);
+      startTickLoop();
+    } else {
+      showIntegrationCheckpoint(20);
+    }
+  }
+
+  function startCorridorLoops() {
+    corridorTickTimer = setInterval(() => {
+      if (!corridorActive || corridorPaused) return;
+      corridorTimeLeft = Math.max(0, corridorTimeLeft - 1);
+      updateCorridorHUD();
+      if (corridorTimeLeft <= 0) {
+        setHint("You survived. Sector 20 contained.");
+        endCorridorLevel(true);
+      }
+    }, 1000);
+
+    corridorMoveTimer = setInterval(() => {
+      if (!corridorActive || corridorPaused) return;
+      moveCorridorWorkers();
+    }, 50);
+
+    corridorSpawnTimer = setInterval(() => {
+      if (!corridorActive || corridorPaused) return;
+      const count = rand(2, 3) | 0;
+      for (let i = 0; i < count; i++) {
+        const delay = i * rand(180, 380) | 0;
+        if (delay === 0) {
+          spawnCorridorWorker();
+        } else {
+          setTimeout(() => {
+            if (corridorActive && !corridorPaused) spawnCorridorWorker();
+          }, delay);
+        }
+      }
+    }, 470);
+
+    // Spawn first group immediately
+    spawnCorridorWorker();
+    setTimeout(() => { if (corridorActive) spawnCorridorWorker(); }, 300);
+
+    scheduleRogueDart();
+  }
+
+  /* ==============================
      Wiring
      ============================== */
   startBtn.addEventListener("click", () => {
@@ -2318,18 +3108,21 @@ if (overlayStart) {
         evilClickCount += 1;
         addIntegration(0.5);
         const count = evilClickCount;
-        setTimeout(() => {
-          let msg = null;
-          switch (count) {
-            case 1: msg = "Integration pathway opened."; break;
-            case 2: msg = "Noted. Your compliance is improving."; break;
-            case 3: msg = "You are beginning to understand."; break;
-            case 5: msg = "The facility has updated your file."; break;
-            case 8: msg = "You are no longer a visitor."; break;
-            default: if (count > 8) msg = "You belong to us now."; break;
-          }
-          if (msg) setHint(msg);
-        }, 1000);
+
+        let loreMsg = null;
+        switch (count) {
+          case 1: loreMsg = "Integration pathway opened."; break;
+          case 2: loreMsg = "Noted. Your compliance is improving."; break;
+          case 3: loreMsg = "You are beginning to understand."; break;
+          case 5: loreMsg = "The facility has updated your file."; break;
+          case 8: loreMsg = "You are no longer a visitor."; break;
+          default: if (count > 8) loreMsg = "You belong to us now."; break;
+        }
+
+        if (loreMsg) {
+          showLoreFloat(loreMsg);
+          setTimeout(() => setHint(loreMsg), 1000);
+        }
       }
 
       switch (effect) {
@@ -2421,4 +3214,902 @@ if (overlayStart) {
   setButtonsForRunState(false);
   setHint("PRESS BEGIN TO DELAY COLLAPSE.");
   showOverlay("FINAL TAP", "Every tap delays the inevitable.", "INITIATE CONTAINMENT");
+
+function showDescentChoice(nextLevel) {
+  descentUnlocked = true;
+  document.querySelectorAll(".ft-integration-transition, .ft-sector-choice, .ft-sector-briefing").forEach(n => n.remove());
+  const wrap = document.createElement("div");
+  wrap.className = "ft-sector-choice";
+  wrap.innerHTML = `
+    <div class="ft-sector-choice-card">
+      <div class="ft-sector-choice-alert">SECTOR ALERT</div>
+      <div class="ft-sector-choice-title">THE DESCENT — BREACH DETECTED.</div>
+      <div class="ft-sector-choice-sub">You have gone too deep. The factory does not end.</div>
+      <div class="ft-sector-choice-buttons">
+        <button class="ft-checkpoint-btn-continue" type="button">CONTINUE CONTAINMENT</button>
+        <button class="ft-checkpoint-btn-sector" type="button">ENTER THE DESCENT</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.ft-checkpoint-btn-continue').onclick = () => {
+    wrap.remove();
+    beginLevel(nextLevel, false);
+    startTickLoop();
+  };
+  wrap.querySelector('.ft-checkpoint-btn-sector').onclick = () => {
+    wrap.remove();
+    startDescent(nextLevel);
+  };
+}
+
+function startDescent(nextLevel) {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'descent-canvas';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:#000;touch-action:none;';
+  document.body.appendChild(canvas);
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const GROUND = H - 80;
+  const GRAVITY = 0.55;
+  const JUMP = -14;
+  const SPEED = 4;
+
+  const player = { x: 60, y: GROUND - 56, w: 28, h: 56, vx: 0, vy: 0, onGround: false, frame: 0, alive: true };
+
+  const platforms = [
+    { x: 0, y: GROUND, w: W * 5, h: 80 },
+    { x: 300, y: GROUND - 120, w: 140, h: 16 },
+    { x: 600, y: GROUND - 180, w: 120, h: 16 },
+    { x: 900, y: GROUND - 130, w: 150, h: 16 },
+    { x: 1200, y: GROUND - 200, w: 130, h: 16 },
+    { x: 1500, y: GROUND - 150, w: 140, h: 16 },
+    { x: 1800, y: GROUND - 170, w: 120, h: 16 },
+    { x: 2100, y: GROUND - 140, w: 160, h: 16 },
+    { x: 2400, y: GROUND - 190, w: 130, h: 16 },
+    { x: 2700, y: GROUND - 160, w: 140, h: 16 },
+  ];
+
+  const enemies = [
+    { x: 500, y: GROUND - 56, w: 32, h: 56, vx: -1.2, frame: 0, alive: true },
+    { x: 900, y: GROUND - 56, w: 32, h: 56, vx: 1.3, frame: 0, alive: true },
+    { x: 1300, y: GROUND - 56, w: 32, h: 56, vx: -1.1, frame: 0, alive: true },
+    { x: 1700, y: GROUND - 56, w: 32, h: 56, vx: 1.4, frame: 0, alive: true },
+    { x: 2100, y: GROUND - 56, w: 32, h: 56, vx: -1.2, frame: 0, alive: true },
+    { x: 2500, y: GROUND - 56, w: 32, h: 56, vx: 1.3, frame: 0, alive: true },
+    { x: 2800, y: GROUND - 56, w: 32, h: 56, vx: -1.0, frame: 0, alive: true },
+  ];
+
+  const hazards = [
+    { x: 450, y: GROUND - 20, w: 50, h: 20, type: 'acid' },
+    { x: 1050, y: GROUND - 20, w: 60, h: 20, type: 'acid' },
+    { x: 1650, y: GROUND - 20, w: 50, h: 20, type: 'acid' },
+    { x: 2250, y: GROUND - 20, w: 55, h: 20, type: 'acid' },
+    { x: 700, y: 0, w: 12, h: H, type: 'steam', timer: 0 },
+    { x: 1400, y: 0, w: 12, h: H, type: 'steam', timer: 0 },
+    { x: 2000, y: 0, w: 12, h: H, type: 'steam', timer: 0 },
+  ];
+
+  const EXIT_X = 3000;
+  let camX = 0;
+  let tick = 0;
+  let score = 0;
+  let lives = 3;
+  let particles = [];
+  const keys = new Set();
+  let dead = false;
+  let won = false;
+  let deathTimer = 0;
+
+  const bgImg = new Image();
+  bgImg.src = 'corridor-bg.png';
+  const playerImg = new Image();
+  playerImg.src = 'player-sprite.png';
+
+  function hits(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function resetPlayer() {
+    player.x = 60; player.y = GROUND - 56;
+    player.vx = 0; player.vy = 0;
+    player.onGround = false; player.alive = true;
+    camX = 0;
+  }
+
+  function spawnParticles(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+      particles.push({ x, y, vx: (Math.random()-0.5)*6, vy: -Math.random()*5, life: 30, color, size: 4 });
+    }
+  }
+
+  function drawBG() {
+    ctx.drawImage(bgImg, 0, 0, W, H);
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,'rgba(20,0,0,0.7)');
+    grad.addColorStop(1,'rgba(0,0,0,0.3)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  function drawPlatform(p) {
+    const sx = p.x - camX;
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(sx, p.y, p.w, p.h);
+    ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(sx, p.y, p.w, 4);
+  }
+
+  function drawEnemy(e) {
+    if (!e.alive) return;
+    const sx = e.x - camX;
+    e.frame++;
+    ctx.fillStyle = '#cc0';
+    ctx.fillRect(sx+3, e.y+14, 26, 26);
+    ctx.fillStyle = '#dd0';
+    ctx.beginPath();
+    ctx.arc(sx+16, e.y+10, 11, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(sx+16, e.y+10, 6, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(sx+12, e.y+8, 3, 3);
+    ctx.fillRect(sx+19, e.y+8, 3, 3);
+    const lOff = Math.sin(e.frame*0.15)*3;
+    ctx.fillStyle = '#aa0';
+    ctx.fillRect(sx+6, e.y+40, 7, 8+lOff);
+    ctx.fillRect(sx+19, e.y+40, 7, 8-lOff);
+  }
+
+  function drawHazard(h) {
+    const sx = h.x - camX;
+    if (h.type === 'acid') {
+      ctx.fillStyle = '#0a0';
+      ctx.fillRect(sx, h.y, h.w, h.h);
+      ctx.fillStyle = '#0f0';
+      ctx.shadowColor = '#0f0';
+      ctx.shadowBlur = 8;
+      ctx.fillRect(sx+2, h.y+2, h.w-4, 4);
+      ctx.shadowBlur = 0;
+    } else if (h.type === 'steam') {
+      const active = Math.sin(tick * 0.04) > 0;
+      if (!active) return;
+      ctx.fillStyle = 'rgba(0,255,0,0.12)';
+      for (let i = 0; i < 6; i++) {
+        const yy = i * (H/6) + Math.sin(tick*0.1+i)*12;
+        ctx.beginPath();
+        ctx.arc(sx+6, yy, 16+Math.sin(tick*0.08+i)*5, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  function drawPlayer() {
+    const sx = player.x - camX;
+    const sy = player.y;
+    const f = player.frame;
+    const legOff = Math.sin(f * 0.25) * 4;
+    ctx.fillStyle = '#ffdd00';
+    ctx.fillRect(sx + 5, sy + 16, 18, 24);
+    ctx.fillStyle = '#ffee44';
+    ctx.beginPath();
+    ctx.arc(sx + 14, sy + 11, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(sx + 14, sy + 11, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff4400';
+    ctx.fillRect(sx + 10, sy + 9, 3, 3);
+    ctx.fillRect(sx + 16, sy + 9, 3, 3);
+    ctx.fillStyle = '#ddaa00';
+    ctx.fillRect(sx + 6, sy + 40, 6, 10 + legOff);
+    ctx.fillRect(sx + 16, sy + 40, 6, 10 - legOff);
+  }
+
+  function drawExit() {
+    const sx = EXIT_X - camX;
+    ctx.fillStyle = '#080';
+    ctx.fillRect(sx, GROUND-80, 50, 80);
+    ctx.fillStyle = '#0f0';
+    ctx.shadowColor = '#0f0';
+    ctx.shadowBlur = 20;
+    ctx.fillRect(sx+4, GROUND-76, 42, 72);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText('EXIT', sx+8, GROUND-38);
+  }
+
+  function drawHUD() {
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(8,8,220,60);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('THE DESCENT', 18, 28);
+    ctx.fillStyle = '#0f0';
+    ctx.fillText('SCORE: ' + score, 18, 48);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('LIVES: ' + lives, 140, 48);
+  }
+
+  function drawOverlay(text, sub) {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 36px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, W/2, H/2-20);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '18px monospace';
+    ctx.fillText(sub, W/2, H/2+20);
+    ctx.textAlign = 'left';
+  }
+
+  function gameLoop() {
+    tick++;
+    player.frame++;
+
+    if (dead) {
+      deathTimer++;
+      drawBG();
+      for (const p of platforms) drawPlatform(p);
+      drawExit();
+      drawHUD();
+      drawOverlay('INFECTED', lives > 0 ? 'Respawning...' : 'ABSORBED. THE FACTORY WINS.');
+      particles = particles.filter(pt => { pt.x+=pt.vx; pt.y+=pt.vy; pt.vy+=0.2; pt.life--; return pt.life>0; });
+      ctx.globalAlpha=1;
+      if (deathTimer > 90) {
+        if (lives <= 0) {
+          endDescent(false, nextLevel);
+          return;
+        }
+        dead = false;
+        deathTimer = 0;
+        resetPlayer();
+      }
+      raf = requestAnimationFrame(gameLoop);
+      return;
+    }
+
+    if (won) {
+      drawBG();
+      drawOverlay('ESCAPED.', 'The factory cannot hold you.');
+      if (deathTimer++ > 150) { endDescent(true, nextLevel); return; }
+      raf = requestAnimationFrame(gameLoop);
+      return;
+    }
+
+    // Input
+    if (keys.has('ArrowRight') || keys.has('d')) player.vx = SPEED;
+    else if (keys.has('ArrowLeft') || keys.has('a')) player.vx = -SPEED;
+    else player.vx = 0;
+    if ((keys.has(' ') || keys.has('ArrowUp') || keys.has('w')) && player.onGround) {
+      player.vy = JUMP;
+      player.onGround = false;
+    }
+
+    // Physics
+    player.vy += GRAVITY;
+    player.x += player.vx;
+    player.y += player.vy;
+    player.onGround = false;
+
+    for (const pl of platforms) {
+      if (player.x + player.w > pl.x && player.x < pl.x + pl.w) {
+        if (player.y + player.h >= pl.y && player.y + player.h <= pl.y + pl.h + 10 && player.vy >= 0) {
+          player.y = pl.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
+      }
+    }
+
+    if (player.y > H + 60) { lives--; spawnParticles(player.x - camX, H/2, '#f00'); dead=true; deathTimer=0; return; }
+
+    // Enemies
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      e.x += e.vx;
+      let onP = false;
+      for (const pl of platforms) {
+        if (e.x+e.w > pl.x && e.x < pl.x+pl.w && e.y+e.h >= pl.y-2 && e.y+e.h <= pl.y+12) {
+          onP = true;
+          if (e.x <= pl.x || e.x+e.w >= pl.x+pl.w) e.vx *= -1;
+        }
+      }
+      if (!onP) e.vx *= -1;
+      if (hits(player, e)) {
+        if (player.vy > 0 && player.y + player.h < e.y + e.h/2) {
+          e.alive = false;
+          player.vy = -9;
+          score += 150;
+          spawnParticles(e.x - camX, e.y, '#0f0');
+        } else {
+          lives--;
+          spawnParticles(player.x - camX, player.y, '#f00');
+          dead = true; deathTimer = 0;
+        }
+      }
+    }
+
+    // Hazards
+    for (const h of hazards) {
+      if (h.type === 'acid' && hits(player, h)) { lives--; dead=true; deathTimer=0; spawnParticles(player.x-camX, player.y, '#0f0'); }
+      if (h.type === 'steam' && Math.sin(tick*0.04) > 0 && hits(player, {x:h.x-8, y:h.y, w:h.w+16, h:h.h})) { lives--; dead=true; deathTimer=0; }
+    }
+
+    // Win
+    if (player.x >= EXIT_X) { won = true; deathTimer = 0; }
+
+    // Camera
+    const target = player.x - W/3;
+    camX += (target - camX) * 0.1;
+    if (camX < 0) camX = 0;
+
+    // Particles
+    particles = particles.filter(pt => { pt.x+=pt.vx; pt.y+=pt.vy; pt.vy+=0.2; pt.life--; return pt.life>0; });
+
+    // Draw
+    drawBG();
+    for (const p of platforms) drawPlatform(p);
+    drawExit();
+    for (const h of hazards) drawHazard(h);
+    for (const e of enemies) drawEnemy(e);
+    drawPlayer();
+    ctx.globalAlpha=1;
+    for (const pt of particles) {
+      ctx.globalAlpha = Math.max(0, pt.life/30);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+    }
+    ctx.globalAlpha=1;
+    drawHUD();
+
+    raf = requestAnimationFrame(gameLoop);
+  }
+
+  // Touch controls
+  let touchStartX = 0;
+  canvas.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+  canvas.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) < 20) { if (player.onGround) { player.vy = JUMP; player.onGround = false; } }
+    else if (dx > 0) { player.x += SPEED * 18; }
+    else { player.x -= SPEED * 18; }
+  });
+
+  window.addEventListener('keydown', e => { keys.add(e.key); if(e.key===' '||e.key==='ArrowUp') e.preventDefault(); });
+  window.addEventListener('keyup', e => keys.delete(e.key));
+
+  let raf = requestAnimationFrame(gameLoop);
+
+  function endDescent(survived, nextLevel) {
+    cancelAnimationFrame(raf);
+    keys.clear();
+    canvas.remove();
+    descentCleared = survived;
+    beginLevel(nextLevel, false);
+    startTickLoop();
+  }
+}
+
+function startThePit(returnToLevel) {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'pit-canvas';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:#000;touch-action:none;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const GROUND = H - 80;
+  const GRAVITY = 0.65;
+  const JUMP = -13;
+  const SPEED = 3.5;
+  const EXIT_X = 1800;
+  const player = { x: 60, y: GROUND - 56, w: 28, h: 56, vx: 0, vy: 0, onGround: false, frame: 0 };
+  const platforms = [
+    { x: 0, y: GROUND, w: W * 4, h: 80 },
+    { x: 250, y: GROUND - 100, w: 80, h: 16 },
+    { x: 450, y: GROUND - 140, w: 80, h: 16 },
+    { x: 650, y: GROUND - 100, w: 80, h: 16 },
+    { x: 850, y: GROUND - 160, w: 80, h: 16 },
+    { x: 1050, y: GROUND - 110, w: 80, h: 16 },
+    { x: 1250, y: GROUND - 150, w: 80, h: 16 },
+    { x: 1450, y: GROUND - 120, w: 80, h: 16 },
+  ];
+  const enemies = [
+    { x: 300, y: GROUND - 56, w: 32, h: 56, vx: -1.8, frame: 0, alive: true },
+    { x: 600, y: GROUND - 56, w: 32, h: 56, vx: 2.0, frame: 0, alive: true },
+    { x: 900, y: GROUND - 56, w: 32, h: 56, vx: -1.9, frame: 0, alive: true },
+    { x: 1100, y: GROUND - 56, w: 32, h: 56, vx: 1.7, frame: 0, alive: true },
+    { x: 1300, y: GROUND - 56, w: 32, h: 56, vx: -2.1, frame: 0, alive: true },
+    { x: 1500, y: GROUND - 56, w: 32, h: 56, vx: 1.8, frame: 0, alive: true },
+  ];
+  const hazards = [
+    { x: 350, y: GROUND - 20, w: 60, h: 20, type: 'acid' },
+    { x: 700, y: GROUND - 20, w: 70, h: 20, type: 'acid' },
+    { x: 1000, y: GROUND - 20, w: 65, h: 20, type: 'acid' },
+    { x: 1350, y: GROUND - 20, w: 70, h: 20, type: 'acid' },
+    { x: 500, y: 0, w: 12, h: H, type: 'steam' },
+    { x: 1000, y: 0, w: 12, h: H, type: 'steam' },
+    { x: 1400, y: 0, w: 12, h: H, type: 'steam' },
+  ];
+  const bgImg = new Image();
+  bgImg.src = 'corridor-bg.png';
+  let camX = 0, tick = 0, particles = [], dead = false, won = false, deathTimer = 0, raf;
+  const keys = new Set();
+  function hits(a, b) { return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
+  function spawnParticles(x, y, color) { for (let i=0;i<10;i++) particles.push({x,y,vx:(Math.random()-.5)*6,vy:-Math.random()*5,life:30,color,size:4}); }
+  function drawBG() {
+    ctx.drawImage(bgImg,0,0,W,H);
+    ctx.fillStyle='rgba(120,0,0,0.55)';
+    ctx.fillRect(0,0,W,H);
+    if(Math.sin(tick*0.3)>0.7){ctx.fillStyle='rgba(180,0,0,0.08)';ctx.fillRect(0,0,W,H);}
+  }
+  function drawPlatform(p){const sx=p.x-camX;ctx.fillStyle='#1a0000';ctx.fillRect(sx,p.y,p.w,p.h);ctx.fillStyle='#3a0000';ctx.fillRect(sx,p.y,p.w,4);}
+  function drawEnemy(e){
+    if(!e.alive)return;const sx=e.x-camX;e.frame++;
+    ctx.fillStyle='#cc0';ctx.fillRect(sx+3,e.y+14,26,26);
+    ctx.fillStyle='#dd0';ctx.beginPath();ctx.arc(sx+16,e.y+10,11,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(sx+16,e.y+10,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f00';ctx.fillRect(sx+12,e.y+8,3,3);ctx.fillRect(sx+19,e.y+8,3,3);
+    const lOff=Math.sin(e.frame*.15)*3;ctx.fillStyle='#aa0';
+    ctx.fillRect(sx+6,e.y+40,7,8+lOff);ctx.fillRect(sx+19,e.y+40,7,8-lOff);
+  }
+  function drawHazard(h){
+    const sx=h.x-camX;
+    if(h.type==='acid'){ctx.fillStyle='#1a0000';ctx.fillRect(sx,h.y,h.w,h.h);ctx.fillStyle='#ff2200';ctx.shadowColor='#ff2200';ctx.shadowBlur=10;ctx.fillRect(sx+2,h.y+2,h.w-4,4);ctx.shadowBlur=0;}
+    else if(h.type==='steam'){const active=Math.sin(tick*.04)>0;if(!active)return;ctx.fillStyle='rgba(255,0,0,0.12)';for(let i=0;i<6;i++){const yy=i*(H/6)+Math.sin(tick*.1+i)*12;ctx.beginPath();ctx.arc(sx+6,yy,16+Math.sin(tick*.08+i)*5,0,Math.PI*2);ctx.fill();}}
+  }
+  function drawPlayerSprite(){
+    const sx=player.x-camX,sy=player.y,f=player.frame,legOff=Math.sin(f*.25)*4;
+    ctx.fillStyle='#ffdd00';ctx.fillRect(sx+5,sy+16,18,24);
+    ctx.fillStyle='#ffee44';ctx.beginPath();ctx.arc(sx+14,sy+11,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(sx+14,sy+11,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ff4400';ctx.fillRect(sx+10,sy+9,3,3);ctx.fillRect(sx+16,sy+9,3,3);
+    ctx.fillStyle='#ddaa00';ctx.fillRect(sx+6,sy+40,6,10+legOff);ctx.fillRect(sx+16,sy+40,6,10-legOff);
+  }
+  function drawExit(){const sx=EXIT_X-camX;ctx.fillStyle='#800000';ctx.fillRect(sx,GROUND-80,50,80);ctx.fillStyle='#ff2200';ctx.shadowColor='#ff2200';ctx.shadowBlur=20;ctx.fillRect(sx+4,GROUND-76,42,72);ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.font='bold 11px monospace';ctx.fillText('ESCAPE',sx+4,GROUND-38);}
+  function drawHUD(){ctx.fillStyle='rgba(80,0,0,0.85)';ctx.fillRect(8,8,260,70);ctx.fillStyle='#ff2200';ctx.font='bold 14px monospace';ctx.fillText('THE PIT',18,26);ctx.fillStyle='#ff6600';ctx.font='11px monospace';ctx.fillText('PURGATORY OF THE FACTORY',18,42);ctx.fillStyle='#fff';ctx.fillText('Prove yourself pure. Reach the exit.',18,58);}
+  function drawOverlay(title,sub){ctx.fillStyle='rgba(0,0,0,0.82)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#ff2200';ctx.font='bold 36px monospace';ctx.textAlign='center';ctx.fillText(title,W/2,H/2-20);ctx.fillStyle='#aaa';ctx.font='15px monospace';ctx.fillText(sub,W/2,H/2+18);ctx.textAlign='left';}
+  function endPit(survived){cancelAnimationFrame(raf);keys.clear();canvas.remove();levelResolving=false;if(survived){beginLevel(returnToLevel,false);}else{beginLevel(1,false);}startTickLoop();}
+  function gameLoop(){
+    tick++;player.frame++;
+    if(dead){deathTimer++;drawBG();for(const p of platforms)drawPlatform(p);drawExit();drawHUD();drawOverlay('CONSUMED.','The Pit does not forgive. Returning to level 1.');if(deathTimer>120){endPit(false);return;}raf=requestAnimationFrame(gameLoop);return;}
+    if(won){deathTimer++;drawBG();drawOverlay('PROVEN PURE.','The Factory grants you mercy. Your audit awaits.');if(deathTimer>120){endPit(true);return;}raf=requestAnimationFrame(gameLoop);return;}
+    if(keys.has('ArrowRight')||keys.has('d'))player.vx=SPEED;
+    else if(keys.has('ArrowLeft')||keys.has('a'))player.vx=-SPEED;
+    else player.vx=0;
+    if((keys.has(' ')||keys.has('ArrowUp')||keys.has('w'))&&player.onGround){player.vy=JUMP;player.onGround=false;}
+    player.vy+=GRAVITY;player.x+=player.vx;player.y+=player.vy;player.onGround=false;
+    for(const pl of platforms){if(player.x+player.w>pl.x&&player.x<pl.x+pl.w){if(player.y+player.h>=pl.y&&player.y+player.h<=pl.y+pl.h+10&&player.vy>=0){player.y=pl.y-player.h;player.vy=0;player.onGround=true;}}}
+    if(player.y>H+60){spawnParticles(player.x-camX,H/2,'#f00');dead=true;deathTimer=0;return;}
+    for(const e of enemies){
+      if(!e.alive)continue;e.x+=e.vx;let onP=false;
+      for(const pl of platforms){if(e.x+e.w>pl.x&&e.x<pl.x+pl.w&&e.y+e.h>=pl.y-2&&e.y+e.h<=pl.y+12){onP=true;if(e.x<=pl.x||e.x+e.w>=pl.x+pl.w)e.vx*=-1;}}
+      if(!onP)e.vx*=-1;
+      if(hits(player,e)){if(player.vy>0&&player.y+player.h<e.y+e.h/2){e.alive=false;player.vy=-9;spawnParticles(e.x-camX,e.y,'#ff0');}else{dead=true;deathTimer=0;spawnParticles(player.x-camX,player.y,'#f00');}}
+    }
+    for(const h of hazards){
+      if(h.type==='acid'&&hits(player,h)){dead=true;deathTimer=0;spawnParticles(player.x-camX,player.y,'#f00');}
+      if(h.type==='steam'&&Math.sin(tick*.04)>0&&hits(player,{x:h.x-8,y:h.y,w:h.w+16,h:h.h})){dead=true;deathTimer=0;}
+    }
+    if(player.x>=EXIT_X){won=true;deathTimer=0;}
+    const target=player.x-W/3;camX+=(target-camX)*.1;if(camX<0)camX=0;
+    particles=particles.filter(pt=>{pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=.2;pt.life--;return pt.life>0;});
+    drawBG();for(const p of platforms)drawPlatform(p);drawExit();for(const h of hazards)drawHazard(h);for(const e of enemies)drawEnemy(e);drawPlayerSprite();
+    ctx.globalAlpha=1;for(const pt of particles){ctx.globalAlpha=Math.max(0,pt.life/30);ctx.fillStyle=pt.color;ctx.fillRect(pt.x,pt.y,pt.size,pt.size);}ctx.globalAlpha=1;
+    drawHUD();raf=requestAnimationFrame(gameLoop);
+  }
+  canvas.addEventListener('touchstart',e=>{e._startX=e.touches[0].clientX;});
+  canvas.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-(e._startX||0);if(Math.abs(dx)<20){if(player.onGround){player.vy=JUMP;player.onGround=false;}}else if(dx>0)player.x+=SPEED*18;else player.x-=SPEED*18;});
+  window.addEventListener('keydown',e=>{keys.add(e.key);if(e.key===' '||e.key==='ArrowUp')e.preventDefault();});
+  window.addEventListener('keyup',e=>keys.delete(e.key));
+  raf=requestAnimationFrame(gameLoop);
+}
+
+function showGehennaChoice(nextLevel) {
+  document.querySelectorAll(".ft-integration-transition, .ft-sector-choice, .ft-sector-briefing").forEach(n => n.remove());
+  const wrap = document.createElement("div");
+  wrap.className = "ft-sector-choice";
+  wrap.innerHTML = `
+    <div class="ft-sector-choice-card">
+      <div class="ft-sector-choice-alert">BOSS ENCOUNTER</div>
+      <div class="ft-sector-choice-title">GEHENNA AWAITS.</div>
+      <div class="ft-sector-choice-sub">You have survived long enough to be noticed. The depths of the factory have opened. Three waves of horrors stand between you and the next level. Die and you return to the beginning. The factory does not reward cowardice.</div>
+      <div class="ft-sector-choice-buttons">
+        <button class="ft-checkpoint-btn-sector" type="button">DESCEND INTO GEHENNA</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.ft-checkpoint-btn-sector').onclick = () => {
+    wrap.remove();
+    startGehenna(nextLevel);
+  };
+}
+
+function startGehenna(nextLevel) {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'gehenna-canvas';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:#000;touch-action:none;cursor:crosshair;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const FOV = Math.PI / 3;
+  const MAP_SIZE = 16;
+  const MAX_DEPTH = 16;
+  const MOVE_SPEED = 0.06;
+  const ROT_SPEED = 0.04;
+  const SHOOT_CD = 12;
+
+  const MAP = [
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,1,1,0,0,0,0,0,0,0,0,1,1,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,1,1,0,0,0,0,0,0,0,0,1,1,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  ];
+
+  function getMap(x,y){const mx=Math.floor(x),my=Math.floor(y);if(mx<0||mx>=MAP_SIZE||my<0||my>=MAP_SIZE)return 1;return MAP[my*MAP_SIZE+mx];}
+
+  const waveCount = Math.min(3, Math.floor(nextLevel / 10));
+  const speedMult = 1 + (nextLevel / 100);
+
+  function spawnWave(wave) {
+    const spots = [[2,2],[13,2],[2,13],[13,13],[7,2],[7,13],[2,7],[13,7],[4,4],[11,4],[4,11],[11,11]];
+    const count = 3 + wave * 2;
+    const demons = [];
+    for (let i = 0; i < Math.min(count, spots.length); i++) {
+      const [sx,sy] = spots[i];
+      const types = ['brute','crawler','spitter'];
+      demons.push({
+        x: sx+0.5, y: sy+0.5,
+        hp: 2+wave, maxHp: 2+wave,
+        alive: true, frame: 0,
+        type: types[i%3],
+        attackTimer: 60+Math.random()*120,
+      });
+    }
+    return demons;
+  }
+
+  let state = 'playing';
+  let px=8, py=8, angle=0;
+  let hp=100, maxHp=100;
+  let lives=3;
+  let demons=spawnWave(0);
+  let projectiles=[];
+  let wave=1;
+  let kills=0;
+  let tick=0;
+  let shootCooldown=0;
+  let muzzleLife=0;
+  let dmgTimer=0;
+  let ammo=30;
+  let waveClearTimer=0;
+  let deathTimer=0;
+  let particles=[];
+  let raf;
+  const keys=new Set();
+  let shooting=false;
+
+  function castRays() {
+    for (let i=0; i<W; i++) {
+      const rayAngle = angle - FOV/2 + (i/W)*FOV;
+      const sin=Math.sin(rayAngle), cos=Math.cos(rayAngle);
+      let dist=0, hit=false, hitX=px, hitY=py;
+      for (let d=0; d<MAX_DEPTH*50; d++) {
+        dist+=0.02; hitX=px+cos*dist; hitY=py+sin*dist;
+        if(getMap(hitX,hitY)){hit=true;break;}
+      }
+      if(!hit)dist=MAX_DEPTH;
+      const corrected=dist*Math.cos(rayAngle-angle);
+      const wallH=Math.min(H,(H*0.8)/corrected);
+      const wallTop=(H-wallH)/2;
+      const cg=ctx.createLinearGradient(i,0,i,wallTop);
+      cg.addColorStop(0,'#0a0000');cg.addColorStop(1,'#1a0505');
+      ctx.fillStyle=cg;ctx.fillRect(i,0,2,wallTop);
+      const fg=ctx.createLinearGradient(i,wallTop+wallH,i,H);
+      fg.addColorStop(0,'#1a0505');fg.addColorStop(0.5,'#2a0a00');
+      fg.addColorStop(1,`rgba(${180+Math.sin(tick*0.03+i*0.01)*40},20,0,1)`);
+      ctx.fillStyle=fg;ctx.fillRect(i,wallTop+wallH,2,H-(wallTop+wallH));
+      const shade=Math.max(0,1-corrected/MAX_DEPTH);
+      const r=Math.floor(40*shade);const g2=Math.floor(10*shade);const b=Math.floor(8*shade);
+      ctx.fillStyle=`rgb(${r},${g2},${b})`;ctx.fillRect(i,wallTop,2,wallH);
+      if(shade>0.3&&(Math.floor(hitX*4+hitY*4)%7===0)){
+        ctx.fillStyle=`rgba(120,40,0,${shade*0.4})`;ctx.fillRect(i,wallTop+wallH*0.3,2,wallH*0.5);
+      }
+    }
+  }
+
+  function drawDemons() {
+    const sorted=demons.filter(d=>d.alive).map(d=>({...d,dist:Math.hypot(d.x-px,d.y-py),ang:Math.atan2(d.y-py,d.x-px)})).sort((a,b)=>b.dist-a.dist);
+    for (const d of sorted) {
+      let relAngle=d.ang-angle;
+      while(relAngle>Math.PI)relAngle-=Math.PI*2;
+      while(relAngle<-Math.PI)relAngle+=Math.PI*2;
+      if(Math.abs(relAngle)>FOV/2+0.1)continue;
+      const screenX=W/2+(relAngle/(FOV/2))*(W/2);
+      const spriteH=Math.min(H,(H*0.6)/d.dist);
+      const spriteW=spriteH*0.7;
+      const spriteTop=(H-spriteH)/2;
+      const shade=Math.max(0.15,1-d.dist/MAX_DEPTH);
+      if(d.type==='brute'){
+        ctx.fillStyle=`rgba(${Math.floor(60*shade)},${Math.floor(20*shade)},${Math.floor(15*shade)},1)`;
+        ctx.fillRect(screenX-spriteW/2,spriteTop+spriteH*0.15,spriteW,spriteH*0.6);
+        ctx.fillStyle=`rgba(${Math.floor(80*shade)},${Math.floor(30*shade)},${Math.floor(20*shade)},1)`;
+        ctx.beginPath();ctx.arc(screenX,spriteTop+spriteH*0.12,spriteW*0.3,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=`rgba(255,${30+Math.sin(tick*0.1)*20},0,${shade})`;
+        ctx.shadowColor='#f00';ctx.shadowBlur=10*shade;
+        const es=spriteW*0.06;
+        ctx.fillRect(screenX-spriteW*0.12,spriteTop+spriteH*0.1,es,es);
+        ctx.fillRect(screenX+spriteW*0.06,spriteTop+spriteH*0.1,es,es);
+        ctx.shadowBlur=0;
+        ctx.strokeStyle=`rgba(${Math.floor(100*shade)},${Math.floor(60*shade)},0,1)`;
+        ctx.lineWidth=spriteW*0.08;
+        const armSwing=Math.sin(d.frame*0.08)*spriteW*0.15;
+        ctx.beginPath();ctx.moveTo(screenX-spriteW/2,spriteTop+spriteH*0.3);ctx.lineTo(screenX-spriteW/2-armSwing,spriteTop+spriteH*0.6);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(screenX+spriteW/2,spriteTop+spriteH*0.3);ctx.lineTo(screenX+spriteW/2+armSwing,spriteTop+spriteH*0.6);ctx.stroke();
+        const legOff=Math.sin(d.frame*0.1)*spriteW*0.1;
+        ctx.fillStyle=`rgba(${Math.floor(40*shade)},${Math.floor(15*shade)},${Math.floor(10*shade)},1)`;
+        ctx.fillRect(screenX-spriteW*0.25,spriteTop+spriteH*0.75,spriteW*0.2,spriteH*0.25+legOff);
+        ctx.fillRect(screenX+spriteW*0.05,spriteTop+spriteH*0.75,spriteW*0.2,spriteH*0.25-legOff);
+      } else if(d.type==='crawler'){
+        const crawlH=spriteH*0.4;const crawlTop=spriteTop+spriteH*0.6;
+        ctx.fillStyle=`rgba(${Math.floor(50*shade)},${Math.floor(35*shade)},${Math.floor(10*shade)},1)`;
+        ctx.fillRect(screenX-spriteW*0.6,crawlTop,spriteW*1.2,crawlH*0.5);
+        ctx.strokeStyle=`rgba(${Math.floor(70*shade)},${Math.floor(40*shade)},0,1)`;ctx.lineWidth=2;
+        for(let leg=0;leg<4;leg++){
+          const lx=screenX-spriteW*0.5+leg*spriteW*0.35;
+          const lOff=Math.sin(d.frame*0.15+leg)*5;
+          ctx.beginPath();ctx.moveTo(lx,crawlTop+crawlH*0.3);ctx.lineTo(lx+(leg<2?-8:8),crawlTop+crawlH*0.5+lOff);ctx.stroke();
+        }
+        ctx.fillStyle=`rgba(255,50,0,${shade})`;ctx.shadowColor='#f30';ctx.shadowBlur=8*shade;
+        ctx.beginPath();ctx.arc(screenX-3,crawlTop-2,3*shade,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(screenX+3,crawlTop-2,3*shade,0,Math.PI*2);ctx.fill();
+        ctx.shadowBlur=0;
+      } else {
+        ctx.fillStyle=`rgba(${Math.floor(30*shade)},${Math.floor(50*shade)},${Math.floor(10*shade)},1)`;
+        ctx.fillRect(screenX-spriteW*0.2,spriteTop+spriteH*0.1,spriteW*0.4,spriteH*0.7);
+        ctx.fillStyle=`rgba(${Math.floor(40*shade)},${Math.floor(60*shade)},${Math.floor(15*shade)},1)`;
+        ctx.beginPath();ctx.arc(screenX,spriteTop+spriteH*0.08,spriteW*0.22,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=`rgba(0,${Math.floor(255*shade)},0,${shade*0.8})`;
+        ctx.shadowColor='#0f0';ctx.shadowBlur=6*shade;
+        const droolLen=spriteH*0.1+Math.sin(d.frame*0.05)*spriteH*0.05;
+        ctx.fillRect(screenX-2,spriteTop+spriteH*0.15,4,droolLen);
+        ctx.shadowBlur=0;
+        ctx.fillStyle=`rgba(0,255,0,${shade})`;
+        ctx.fillRect(screenX-spriteW*0.1,spriteTop+spriteH*0.05,3,3);
+        ctx.fillRect(screenX+spriteW*0.04,spriteTop+spriteH*0.05,3,3);
+      }
+      if(d.hp<d.maxHp){
+        const barW=spriteW*0.8;
+        ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(screenX-barW/2,spriteTop-8,barW,4);
+        ctx.fillStyle='#f00';ctx.fillRect(screenX-barW/2,spriteTop-8,barW*(d.hp/d.maxHp),4);
+      }
+    }
+  }
+
+  function drawWeapon(){
+    const bob=Math.sin(tick*0.08)*3;
+    const gunX=W/2+80, gunY=H-120+bob;
+    ctx.fillStyle='#2a2a2a';ctx.fillRect(gunX,gunY,60,25);ctx.fillRect(gunX+10,gunY+25,20,40);
+    ctx.fillStyle='#1a1a1a';ctx.fillRect(gunX-30,gunY+5,40,15);
+    ctx.fillStyle='#333';ctx.fillRect(gunX+5,gunY+3,50,3);
+    if(muzzleLife>0){ctx.fillStyle='rgba(255,150,0,0.6)';ctx.beginPath();ctx.arc(gunX-30,gunY+12,8,0,Math.PI*2);ctx.fill();}
+  }
+
+  function drawMuzzle(){
+    if(muzzleLife<=0)return;
+    const alpha=muzzleLife/6;
+    ctx.fillStyle=`rgba(255,${150+muzzleLife*15},0,${alpha})`;
+    ctx.shadowColor='#ff8800';ctx.shadowBlur=30;
+    ctx.beginPath();ctx.arc(W/2,H-60,20+muzzleLife*3,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  function drawCrosshair(){
+    ctx.strokeStyle='#f44';ctx.lineWidth=2;ctx.shadowColor='#f00';ctx.shadowBlur=4;
+    const cx=W/2,cy=H/2;
+    ctx.beginPath();ctx.moveTo(cx-15,cy);ctx.lineTo(cx-5,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+5,cy);ctx.lineTo(cx+15,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-15);ctx.lineTo(cx,cy-5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy+5);ctx.lineTo(cx,cy+15);ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+
+  function drawHUD(){
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(10,H-50,220,40);
+    ctx.strokeStyle='#600';ctx.lineWidth=1;ctx.strokeRect(10,H-50,220,40);
+    ctx.fillStyle='#f00';ctx.font='bold 14px monospace';ctx.fillText('HEALTH',20,H-32);
+    const hpW=140*(hp/maxHp);
+    ctx.fillStyle='#300';ctx.fillRect(80,H-40,140,16);
+    ctx.fillStyle=hp>maxHp*0.3?'#f00':'#f80';ctx.fillRect(80,H-40,hpW,16);
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(W-200,H-50,190,40);
+    ctx.fillStyle='#f44';ctx.font='bold 14px monospace';ctx.fillText('WAVE: '+wave,W-190,H-32);
+    ctx.fillStyle='#fa0';ctx.fillText('KILLS: '+kills,W-190,H-16);
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(W/2-60,H-50,120,40);
+    ctx.fillStyle='#ff0';ctx.font='bold 16px monospace';ctx.textAlign='center';
+    ctx.fillText('AMMO: '+ammo,W/2,H-24);ctx.textAlign='left';
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(10,10,160,30);
+    ctx.fillStyle='#f44';ctx.font='bold 12px monospace';
+    ctx.fillText('GEHENNA  LIVES: '+lives,18,28);
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(10,45,160,24);
+    ctx.fillStyle='#fa0';ctx.font='11px monospace';
+    ctx.fillText('WAVE '+wave+' OF '+waveCount,18,60);
+  }
+
+  function drawDamageOverlay(){
+    if(dmgTimer<=0)return;
+    const alpha=Math.min(0.4,dmgTimer/20);
+    ctx.fillStyle=`rgba(180,0,0,${alpha})`;ctx.fillRect(0,0,W,H);
+    const grad=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.8);
+    grad.addColorStop(0,'transparent');grad.addColorStop(1,`rgba(100,0,0,${alpha*1.5})`);
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  }
+
+  function drawOverlay(title,sub){
+    ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#ff2200';ctx.font='bold 38px monospace';ctx.textAlign='center';
+    ctx.fillText(title,W/2,H/2-30);
+    ctx.fillStyle='#aaa';ctx.font='16px monospace';
+    ctx.fillText(sub,W/2,H/2+10);
+    ctx.fillStyle='#666';ctx.font='13px monospace';
+    ctx.fillText('Lives remaining: '+lives,W/2,H/2+35);
+    ctx.textAlign='left';
+  }
+
+  function shoot(){
+    if(shootCooldown>0||ammo<=0)return;
+    shootCooldown=SHOOT_CD;muzzleLife=6;ammo--;
+    const shootCos=Math.cos(angle),shootSin=Math.sin(angle);
+    let closest=null,closestDist=Infinity;
+    for(const d of demons){
+      if(!d.alive)continue;
+      const ddist=Math.hypot(d.x-px,d.y-py);
+      let relAng=Math.atan2(d.y-py,d.x-px)-angle;
+      while(relAng>Math.PI)relAng-=Math.PI*2;
+      while(relAng<-Math.PI)relAng+=Math.PI*2;
+      const hitW=0.4/ddist;
+      if(Math.abs(relAng)<hitW&&ddist<closestDist){
+        let blocked=false;
+        for(let t=0;t<ddist;t+=0.1){if(getMap(px+shootCos*t,py+shootSin*t)){blocked=true;break;}}
+        if(!blocked){closest=d;closestDist=ddist;}
+      }
+    }
+    if(closest){closest.hp--;if(closest.hp<=0){closest.alive=false;kills++;}}
+  }
+
+  function endGehenna(survived){
+    cancelAnimationFrame(raf);keys.clear();canvas.remove();
+    levelResolving=false;
+    if(survived){beginLevel(nextLevel,false);}
+    else{beginLevel(1,false);}
+    startTickLoop();
+  }
+
+  function gameLoop(){
+    tick++;
+    if(keys.has('ArrowLeft')||keys.has('a'))angle-=ROT_SPEED;
+    if(keys.has('ArrowRight')||keys.has('d'))angle+=ROT_SPEED;
+    const cos=Math.cos(angle),sin=Math.sin(angle);
+    let dx=0,dy=0;
+    if(keys.has('ArrowUp')||keys.has('w')){dx+=cos*MOVE_SPEED;dy+=sin*MOVE_SPEED;}
+    if(keys.has('ArrowDown')||keys.has('s')){dx-=cos*MOVE_SPEED;dy-=sin*MOVE_SPEED;}
+    if(!getMap(px+dx*3,py))px+=dx;
+    if(!getMap(px,py+dy*3))py+=dy;
+    shootCooldown=Math.max(0,shootCooldown-1);
+    if(shooting)shoot();
+    ammo = 999;
+    muzzleLife=Math.max(0,muzzleLife-1);
+    dmgTimer=Math.max(0,dmgTimer-1);
+
+    let allDead=true;
+    for(const d of demons){
+      if(!d.alive)continue;
+      allDead=false;d.frame++;
+      const ddist=Math.hypot(d.x-px,d.y-py);
+      if(ddist>0.8){
+        const toX=(px-d.x)/ddist,toY=(py-d.y)/ddist;
+        const speed=(d.type==='crawler'?0.012*1.8:0.012)*speedMult;
+        const nx=d.x+toX*speed,ny=d.y+toY*speed;
+        if(!getMap(nx,d.y))d.x=nx;if(!getMap(d.x,ny))d.y=ny;
+      }
+      if(ddist<0.7){d.attackTimer--;if(d.attackTimer<=0){hp-=d.type==='brute'?15:8;dmgTimer=15;d.attackTimer=d.type==='brute'?40:25;}}
+      if(d.type==='spitter'&&ddist<8&&ddist>2){d.attackTimer--;if(d.attackTimer<=0){const toX2=(px-d.x)/ddist,toY2=(py-d.y)/ddist;projectiles.push({x:d.x,y:d.y,dx:toX2*0.08,dy:toY2*0.08,life:120});d.attackTimer=80+Math.random()*40;}}
+    }
+
+    projectiles=projectiles.filter(pr=>{
+      pr.x+=pr.dx;pr.y+=pr.dy;pr.life--;
+      if(getMap(pr.x,pr.y))return false;
+      if(Math.hypot(pr.x-px,pr.y-py)<0.4){hp-=10;dmgTimer=10;return false;}
+      return pr.life>0;
+    });
+
+    if(hp<=0){
+      lives--;
+      if(lives<=0){
+        ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#ff2200';ctx.font='bold 38px monospace';ctx.textAlign='center';
+        ctx.fillText('CONSUMED BY GEHENNA',W/2,H/2-20);
+        ctx.fillStyle='#aaa';ctx.font='16px monospace';
+        ctx.fillText('Returning to level 1...',W/2,H/2+20);
+        ctx.textAlign='left';
+        setTimeout(()=>endGehenna(false),2500);
+        return;
+      }
+      hp=maxHp;dmgTimer=30;
+      drawOverlay('CONSUMED.','Respawning... '+lives+' lives left.');
+      setTimeout(()=>{px=8;py=8;raf=requestAnimationFrame(gameLoop);},1500);
+      return;
+    }
+
+    if(allDead){
+      waveClearTimer++;
+      if(waveClearTimer>90){
+        if(wave>=waveCount){
+          ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,0,W,H);
+          ctx.fillStyle='#ff4400';ctx.font='bold 36px monospace';ctx.textAlign='center';
+          ctx.fillText('GEHENNA CONQUERED.',W/2,H/2-20);
+          ctx.fillStyle='#aaa';ctx.font='16px monospace';
+          ctx.fillText('The factory grants you passage.',W/2,H/2+20);
+          ctx.textAlign='left';
+          setTimeout(()=>endGehenna(true),2500);
+          return;
+        }
+        wave++;ammo+=20;hp=Math.min(maxHp,hp+30);
+        demons=spawnWave(wave-1);waveClearTimer=0;
+      }
+    }
+
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    castRays();
+    drawDemons();
+    drawWeapon();drawMuzzle();drawCrosshair();drawDamageOverlay();drawHUD();
+
+    if(allDead&&wave<waveCount){
+      ctx.fillStyle='#f44';ctx.font='bold 28px monospace';ctx.textAlign='center';
+      ctx.fillText('WAVE '+wave+' CLEARED',W/2,H/2-20);
+      ctx.fillStyle='#aaa';ctx.font='16px monospace';
+      ctx.fillText('Descending deeper...',W/2,H/2+10);
+      ctx.textAlign='left';
+    }
+
+    raf=requestAnimationFrame(gameLoop);
+  }
+
+  canvas.addEventListener('mousedown',()=>{shooting=true;});
+  canvas.addEventListener('mouseup',()=>{shooting=false;});
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();shooting=true;},{passive:false});
+  canvas.addEventListener('touchend',e=>{e.preventDefault();shooting=false;},{passive:false});
+  window.addEventListener('keydown',e=>{keys.add(e.key);if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();});
+  window.addEventListener('keyup',e=>keys.delete(e.key));
+
+  raf=requestAnimationFrame(gameLoop);
+}
+
 })();
