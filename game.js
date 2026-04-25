@@ -1922,9 +1922,21 @@ const bottomPad = hudRect ? (hudRect.height + 12) : 0;
       }
     }
 
+    // Permanent image clutter — never clickable
+    const CLUTTER_DECOYS = ["decoy-extinguisher", "decoy-clipboard", "decoy-hardhat", "decoy-gasmask", "decoy-warningsign", "decoy-brokenpipe", "decoy-firstaid", "decoy-camera"];
+    for (let ci = 0; ci < 5; ci++) {
+      const img = document.createElement("img");
+      img.src = CLUTTER_DECOYS[Math.floor(Math.random() * CLUTTER_DECOYS.length)] + ".png";
+      img.style.cssText = "position:absolute;width:48px;height:48px;pointer-events:none;z-index:60;opacity:0.85;";
+      const cp = zonePoint("floor");
+      img.style.left = cp.x + "px";
+      img.style.top = cp.y + "px";
+      itemsLayer.appendChild(img);
+    }
+
     // Decoys (larger too)
-    const decoys = ["bolts", "mug", "rag", "fuse", "tape", "wrench", "key"];
-    const decoyCount = 8;
+    const decoys = ["bolts", "rag", "key"];
+    const decoyCount = 3;
 
     for (let i = 0; i < decoyCount; i++) {
       const sprite = choice(decoys);
@@ -2241,6 +2253,13 @@ updateHUD();
 
     const snap = levelEndSnapshot;
     const needed = scoreNeededToAdvance(snap.level);
+
+    // Audit success always advances regardless of score
+    if (snap.mode === "audit-success") {
+      const next = snap.level + 1;
+      beginLevel(next, true);
+      return;
+    }
 
     // final level complete
     if (snap.level >= MAX_LEVEL) {
